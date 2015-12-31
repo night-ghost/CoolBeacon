@@ -20,7 +20,11 @@
 * пока подключен к борту не экономит энергию и получает через MAVlink не только координаты но и другую информацию
 * координаты перед сохранением в EEPROM фильтруются по минимальному расстоянию - зачем писАть стояние на месте?
 * умеет "разговаривать" не только по радио но и пищалкой, и все предполетные разговоры идут на нее
+* голос формируется по таймеру а не задержкой - получается гораздо чище
+* во всех режимах мощность радиопередачи автоматически регулируется по силе принимаемого сигнала
 * радио до дизарма не включается вообще дабы не создавать помех
+* при дизарме в радиусе менее 10 метров от точки взлета маяк не срабатывает (кроме вызывного)
+* при зафиксированном краше таймерный маяк включается сразу же, без задержки
 * умеет управлять GSM-модулем SIM800 и отправить SMS с координатами при аварийной посадке (TODO: и в воздухе при аварийном снижении)
 * TODO: управление парашютной системой спасения
 * TODO: при взлете запоминать координаты и не включать маяк при посадке в непосредственной близости
@@ -28,9 +32,14 @@
 
 удалено:
 * нет поддержки прямого подключения к GPS
-* нет поддержки морзянки
+* нет автораспознавания формата - всегда MAVlink
+* нет автораспознавания скорости - MAVlink всегда на 57600
+* нет поддержки морзянки (хотя если кому надо то можно и сделать, причем с кодированием на борту)
 * нет управления форматом координат из конфигуратора - задается при сборке
 * (почти) нет управления ногой подключения пищалки из конфигуратора - задается при сборке
+
+
+
 
 LICENSE
 
@@ -49,30 +58,6 @@ LICENSE
  * <http://www.gnu.org/licenses/>.
 
 */
-
-//#include <FastSerial.h>
-#include <SingleSerial.h>
-
-#include <avr/io.h>
-#include <avr/interrupt.h>
-#include <avr/common.h>
-#include <avr/eeprom.h>
-#include <inttypes.h>
-#include <avr/io.h>
-#include <avr/wdt.h>
-#include <avr/sleep.h>
-#include <avr/power.h>
-#include <Arduino.h>
-//#include <EEPROM.h>
-
-#include "bufstream.h"
-#include "compat.h"
-#include "config.h"
-#include "vars.h"
-
-#include <GCS_MAVLink.h>
-#include "rfm22b.h"
-#include "gsm.h"
 
 
 #define DEBUG
@@ -101,9 +86,42 @@ LICENSE
 
 
 
+//#include <FastSerial.h>
+#include <SingleSerial.h>
+
+#include <avr/io.h>
+#include <avr/interrupt.h>
+#include <avr/common.h>
+#include <avr/eeprom.h>
+#include <inttypes.h>
+#include <avr/io.h>
+#include <avr/wdt.h>
+#include <avr/sleep.h>
+#include <avr/power.h>
+#include <Arduino.h>
+//#include <EEPROM.h>
+#include "compat.h" //   some missing definitions
+#include <AltSoftSerial.h>
+
+// own includes
+#include "bufstream.h"
+#include "config.h"
+#include "vars.h"
+
+//#include <AP_Common.h>
+// uses AP_Param
+#include <GCS_MAVLink.h> 
+
+
 //FastSerialPort0(serial);
 SingleSerialPort_x(serial);
 SingleSerial serial;
+
+// program's parts
+
+#include "rfm22b.h"
+//#include "gsm.h"
+#include "chute.h"
 
 
 void beepOnBuzzer(unsigned int length);
@@ -122,14 +140,11 @@ inline void initBuzzer(){
 	pinMode(BUZZER_PIN,OUTPUT);
 
  #if defined(BUZZER_PIN_PORT) && defined(BUZZER_PIN_BIT)
-  #define BUZZER_HIGH (BUZZER_PIN_PORT |=  BUZZER_PIN_BIT)
-  #define BUZZER_LOW  (BUZZER_PIN_PORT &= ~BUZZER_PIN_BIT)
+    // OK
  #else
 	buzzerBit = digitalPinToBitMask(BUZZER_PIN); // для работы с пищалкой напрямую, а не через DigitalWrite
 	uint8_t port = digitalPinToPort(BUZZER_PIN);
 	buzzerPort = portOutputRegister(port);
-  #define BUZZER_HIGH (*buzzerPort |=  buzzerBit)
-  #define BUZZER_LOW  (*buzzerPort &= ~buzzerBit)
  #endif
 
 	BUZZER_LOW; //digitalWrite(BUZZER_PIN, 0);
@@ -167,23 +182,9 @@ inline void initBuzzer(){
         Red_LED_OFF
         beacon_tone(500, 150);
     }
-    powerOffRFM();
+    RFM_off();
 }*/
 
-
-// если RFMка выключена то дерготня SDI ей не мешает, так что не тратим время на проверку
-
-ISR(TIMER1_COMPA_vect) {
-    SDI_off;
-    
-    if(voiceOnBuzzer) BUZZER_HIGH;
-}
-
-ISR(TIMER1_OVF_vect)  { 
-    SDI_on;
-
-    if(voiceOnBuzzer) BUZZER_LOW;
-}
 
 SIGNAL(WDT_vect) {
   wdt_disable();
@@ -207,8 +208,6 @@ uint16_t getExtVoltage(){
 
 
     ADCSRA &= ~(1<<ADEN); //Disable ADC
-//  ACSR = (1<<ACD); //Disable the analog comparator
-//  DIDR1 = (1<<AIN1D)|(1<<AIN0D); //Disable digital input buffer on AIN1/0
 
 //    if(sum < 64) { // нету напряжения, совсем нету
 //	return 0; // оно и само так получится
@@ -237,11 +236,11 @@ uint16_t readVCC() {
     }
 //    pinMode(12, 0); // PB3 на ввod
  
-    sum /=50;
+    sum /= 50;
     sum *= 33;
     sum /= 255;
     
-    if(sum <26) return 0;
+    if(sum < 26) return 0;
     if(sum > 34) return sum;
 */
     ADMUX = 0x4e; //AVCC with external capacitor at AREF pin, 1.1v as meashured
@@ -261,19 +260,31 @@ uint16_t readVCC() {
 }
 
 
-void sendVOICE(char *string, byte power, byte beeps)
+byte powerByRSSI() {
+    byte rssi = Got_RSSI;
+    if(rssi)   		// хоть что-то принимаем
+	lastRSSI = rssi;	// запоминаем последнее значение
+    else		// сигнала нет
+	if(lastRSSI > 50) 
+	    lastRSSI -= 2; // убавляем по чуть-чуть
+	else
+	    lastRSSI = 0;
+	
+    // услышав посылку маяк убавляет силу сигнала, затем потихоньку прибавляет
+    return lastRSSI < 50 ? RFM_MAX_POWER : (120-lastRSSI) / 10;
+}
+
+
+void sendVOICE(char *string, byte beeps)
 {
-  power_timer1_enable();
-  
   if(!voiceOnBuzzer) {
-    RFM_SetPower(1, RF22B_PWRSTATE_TX, power); // fInit, mode, power
+    RFM_SetPower(1, RF22B_PWRSTATE_TX, powerByRSSI()); // fInit, mode, power
 
     delay_100();
   }
   _sendVOICE(string, beeps);
 
-  powerOffRFM();
-  power_timer1_disable();
+  RFM_off();
 }
 
 
@@ -504,13 +515,13 @@ byte getLastTrackPoint(){// TODO:
 	p1=p2; // переход к следующей точке
     }
 
-    p1=p2=end; // затереть дабы отличать принятые от исторических
+    p1 = p2 = bad_coord; // затереть дабы отличать принятые от исторических
     
     // not found
     return eeprom_points_count;
 }
 
-//static Coord end ={BAD_COORD,BAD_COORD};
+//static Coord bad_coord ={BAD_COORD,BAD_COORD};
 
 void SaveGPSPoint(){//TODO:
 
@@ -519,7 +530,7 @@ void SaveGPSPoint(){//TODO:
     eeprom_points_count++; // переход к следующей
     if(eeprom_points_count >= MAX_TRACK_POINTS) eeprom_points_count=0; // кольцо
 
-    eeprom_write_len((byte *)&end,   EEPROM_TRACK + eeprom_points_count*sizeof(Coord), sizeof(Coord)); // вторая точка - NAN
+    eeprom_write_len((byte *)& bad_coord,   EEPROM_TRACK + eeprom_points_count*sizeof(Coord), sizeof(Coord)); // вторая точка - NAN
 
     lflags.pointDirty=false; // сохранено
 }
@@ -575,7 +586,7 @@ byte calibrate(){
 
 //    p.FrequencyCorrection=pos; понравится - сохраним вручную
     
-    powerOffRFM();
+    RFM_off();
     return pos;
 }
 
@@ -636,6 +647,7 @@ void deepSleep_450(){
     deepSleep(450);
 }
 
+
 void Beacon_and_Voice() {
      sendBeacon();
      
@@ -643,19 +655,21 @@ void Beacon_and_Voice() {
 //	SendMorzeSign();
 	if(lflags.hasGPSdata){ // есть данные той или иной свежести
 	    deepSleep_450();
-	    sendVOICE(messageBuff,RFM_MAX_POWER,0);
+	    sendVOICE(messageBuff,0);
 	}
     }
     cycles_count +=1;
 
 }
 
+
+
 void sayCoords(){
 
 //    if(messageBuff){
-	sendVOICE(messageBuff, RFM_MAX_POWER, GPS_data_fresh?0:3);
+	sendVOICE(messageBuff, GPS_data_fresh?0:3);
 //    } else {
-//	sendVOICE("000", RFM_MAX_POWER,0);
+//	sendVOICE("000", 0);
 //    }
     
 }
@@ -678,7 +692,7 @@ void listen_quant(){
     preambleDetected=0;
     RFM_SetPower(1,RF22B_PWRSTATE_RX,0);
     Delay_listen();//delay( p.ListenDuration );
-    powerOffRFM();
+    RFM_off();
 }
 
 
@@ -689,12 +703,12 @@ byte one_listen(){
     if(preambleDetected) {
 	byte RSSI= preambleRSSI;
 	
-	for(byte i=64;i>=0 && preambleDetected;i--){ // дождаться окончания вызова
+	for(byte i=64;i>=0 && preambleDetected;i--){ // дождаться окончания вызова но не более 64 раз
 /*
 	    preambleDetected=0;
 	    RFM_SetPower(1,RF22B_PWRSTATE_RX,0);
 	    Delay_listen();//delay( p.ListenDuration );
-	    powerOffRFM();
+	    RFM_off();
 */          listen_quant();
 	    Delay_listen();//delay( p.ListenDuration );
 	    wdt_reset();
@@ -702,7 +716,7 @@ byte one_listen(){
 	
 	if(RSSI > 33) {
 	    RSSI = (RSSI - 33) / 2;
-	    if(RSSI>100) RSSI=99;
+	    if(RSSI>=100) RSSI=99;
 	
 	    return RSSI;
 	} else {
@@ -760,33 +774,28 @@ void sayVoltage(byte v, byte beeps){
     buf[1] = v % 10 + '0';
     buf[2] = 0;
     
-    sendVOICE((char *)buf, RFM_MAX_POWER, beeps);
+    sendVOICE((char *)buf,  beeps);
 }
 
 
-byte waitForCall(byte t){
-    byte rssi;
-    for (byte i=t;i>=0; i--){
-	rssi = Got_RSSI = one_listen();
-	if(rssi) break;
+void waitForCall(byte t){
+    for (byte i=t;i>0; i--){
+	if((Got_RSSI = one_listen())) break;
 	if(t) deepSleep_450();
     }
-    
-    return rssi;
 }
+
 
 
 byte buzzer_SOS(){ 
-    byte rssi;
     for(char i=-3; i!=6; i++){
 	if((byte)i>=3)
 	    beepOnBuzzer_333();
 	else
 	    beepOnBuzzer(0x111);
-	rssi = waitForCall(0);
-	if(rssi) break; // если во время писка услышали вызов - сразу выходим
+	waitForCall(0);
+	if(Got_RSSI) break; // если во время писка услышали вызов - сразу выходим
     }
-    return rssi;
 }
 
 void proximity(byte rssi){
@@ -798,26 +807,40 @@ void proximity(byte rssi){
     
 
 begin:
+DBG_PRINTLN("proximity begin");
+
     for(;;needListen=1) {
-	for(; rssi; fAnswer=0){ //  при получении вызова сказать голосом силу сигнала
+	for(; rssi; ){ //  при получении вызова сказать голосом силу сигнала
 	    wdt_reset();
 	
             buf[2]=0;
             buf[1] = rssi % 10 + '0';
             buf[0] = rssi / 10 + '0';
     
-            sendVOICE((char *)buf,rssi < 50 ? RFM_MAX_POWER : (120-rssi) / 10,0); // регулируем мощность согласно силе принимаемого сигнала
+            sendVOICE((char *)buf, 0); // регулируем мощность согласно силе принимаемого сигнала
     
-	    rssi = waitForCall( fAnswer? 2 : 6 );
+	    waitForCall( fAnswer? 2 : 6 );
+	    rssi = Got_RSSI;
+	    if(rssi) fAnswer=0; 		// сбросим если было несколько частых вызовов
+DBG_PRINTVARLN(rssi);
 	} 
+
+DBG_PRINTLN("proximity loop end");
+DBG_PRINTVARLN(fAnswer);
 
 	if(!fAnswer) break; //если был только один вызов - сообщим координаты и бипы
 	
+
+DBG_PRINTLN("proximity signals");
+	
+	fAnswer=0; // одна серия сигналов - и больше не надо
 	
 	// ответы маяка после вызова
 	for(byte i=(byte)p.WakeRepeat; i!=0; i--){
 // похоже тут баг - во время цикла мы движемся, а сравнивается начальное значение RSSI
 		if(rssi > (byte)p.MinAuxRSSI){		// если сигнал сильный то будем мигать и пищать голосом
+
+DBG_PRINTLN("proximity SOS");
 
 /*		    for(char j=-3; i!=6; i++){
 			if((byte)j>=3)
@@ -828,27 +851,40 @@ begin:
 			if(rssi) goto begin; // если во время писка услышали вызов - идем на начало и сообщаем силу сигнала
 		    }
 */
-		    if(buzzer_SOS()) goto begin; // если во время писка услышали вызов - идем на начало и сообщаем силу сигнала
+		    if(buzzer_SOS()) {
+			fAnswer = 1;  // был вызов во время сигнала - снова как первый раз
+			goto begin; // если во время писка услышали вызов - идем на начало и сообщаем силу сигнала
+		    }
 		    
 		    
 		}
 		
 		if((byte)p.boolWakeBeacon) {
+DBG_PRINTLN("proximity beacon");
+
 		    sendBeacon();
-		    rssi = waitForCall(wi); // при получении вызова - все сначала
+		    waitForCall(wi); // при получении вызова - все сначала
 		    needListen=0; 		// если был маяк то сбросим флаг в любом случае
-		    if(rssi) goto begin;
+		    if((rssi=Got_RSSI)) {
+			fAnswer = 1;  // был вызов во время сигнала - снова как первый раз
+			goto begin;
+		    }
 		}
 		
 		if((byte)p.boolWakeGPSvoice){
+DBG_PRINTLN("proximity coords");
 		    sayCoords();
 		    goto xWait;
 		} else {
 		    if(needListen){
 xWait:			if(i!=1) { // кроме самого последнего цикла
-			    rssi = waitForCall(wi);
+DBG_PRINTLN("proximity listen");
+			    waitForCall(wi);
 			    needListen=1;	// флаг установим в любом случае - было сообщение о координатах или был флаг ранее
-			    if(rssi) goto begin;
+			    if((rssi = Got_RSSI)) {
+				fAnswer = 1;  // был вызов во время сигнала - снова как первый раз
+				goto begin;
+			    }
 			}
 		    }
 		}
@@ -896,21 +932,71 @@ byte CalcNCells_SayVoltage(){
     return 1;
 }
 
+/*
+
+// from http://www.stm32duino.com/viewtopic.php?t=56
+unsigned int sqrt32(unsigned long n)
+{
+    unsigned int c = 0x8000;
+    unsigned int g = 0x8000;
+
+    for(;;) {
+	if(g*g > n)
+	    g ^= c;
+	c >>= 1;
+	if(c == 0)
+	    return g;
+	g |= c;
+    }
+}
+
+*/
+
+
+// see https://github.com/Traumflug/Teacup_Firmware/blob/master/dda_maths.c#L74
+uint32_t approx_distance(uint32_t dx, uint32_t dy) {
+  uint32_t min, max, approx;
+
+  // If either axis is zero, return the other one.
+  if (dx == 0 || dy == 0) return dx + dy;
+
+  if ( dx < dy ) {
+    min = dx;
+    max = dy;
+  } else {
+    min = dy;
+    max = dx;
+  }
+
+  approx = ( max * 1007 ) + ( min * 441 );
+  if ( max < ( min << 4 ))
+    approx -= ( max * 40 );
+
+  // add 512 for proper rounding
+  return (( approx + 512 ) >> 10 );
+}
+
 // расстояние между двумя точками по координатам
 unsigned long distance(Coord p1, Coord p2){
 //    float scaleLongDown = cos(abs(osd_home_lat) * 0.0174532925); нам не нужна супер-точность
 
-    //DST to Home
-    unsigned long dstlat = labs(p1.lat - p2.lat);
-    unsigned long dstlon = labs(p1.lon - p2.lon)  /* * scaleLongDown */;
+    unsigned long dstlat = labs(p1.lat - p2.lat) / 100;
+    unsigned long dstlon = labs(p1.lon - p2.lon) / 100 /* * scaleLongDown */;
 //    return sqrt(sq(dstlat) + sq(dstlon)) * 111319.5 / 10000000.0; нам не нужно точное расстояние 
-    return (dstlat + dstlon) / 100;
+    return approx_distance(dstlat, dstlon);
 }
 
 
 void doOnDisconnect() {// отработать потерю связи
 //	например передать SMS 
 // и поставить таймер отключения телефонного модуля
+
+    if(!badCoord(home_coord.lat) && !badCoord(home_coord.lon))
+	if(distance(home_coord, coord) < MIN_HOME_DISTANCE) return; // слишком близко от дома
+
+
+    nextSearchTime = uptime;	// сразу же включим таймерный маяк
+
 }
 
 
@@ -920,7 +1006,10 @@ void setup(void) {
 //  PORTD=0;     все это давно не используется
 
     wdt_disable();
-  
+ 
+    // wiring настраивает таймер в режим 3 (FastPWM), в котором регистры компаратора буферизованы. Выключим, пусть будет NORMAL
+    TCCR0A &= ~( (1<<WGM01) | (1<<WGM00) );
+ 
     //RF module pins
     pinMode(SDI_pin, OUTPUT);   //SDI
     pinMode(SCLK_pin, OUTPUT);   //SCLK
@@ -935,21 +1024,19 @@ void setup(void) {
   #ifdef Green_LED
     pinMode(Green_LED, OUTPUT);   //GREEN LED
   #endif
-  
+
+
     attachInterrupt(IRQ_interrupt, RFM22B_Int, FALLING);
     sei();
 
 #if defined(DEBUG) || defined(DEBUG_B)
-    serial.begin(TELEMETRY_SPEED, rxBuf, RX_SIZE, txBuf, TX_SIZE);
-//    serial.println("OpenBeacon ");
+    serial.begin(TELEMETRY_SPEED);
 #endif  
   
-    powerOffRFM();
+    RFM_off();
 
     initBuzzer();
     beepOnBuzzer_183();
-
-//    DBG_PRINTLN("wfc");
 
     {//    consoleCommands(); // оно и EEPROM считает
 //void consoleCommands(){
@@ -961,7 +1048,7 @@ void setup(void) {
         Red_LED_ON;
     
 #if (!defined(DEBUG)) &&  (!defined(DEBUG_B))
-        serial.begin(38400, rxBuf, RX_SIZE, txBuf, TX_SIZE);
+        serial.begin(38400);
 #endif
 
         static const char PROGMEM patt[] = "tBeacon";
@@ -979,6 +1066,8 @@ void setup(void) {
             for(unsigned long t=millis()+3000; millis() < t;){
 	        byte c=serial.read();
 
+//if(strncasecmp_P( mav_txtbuf, pat, sizeof(pat) )==0){
+
 	        if(cnt>=6) break;
 	
 	        if(c != pgm_read_byte(&patt[cnt]) ) {
@@ -987,7 +1076,6 @@ void setup(void) {
 	        }
 	        cnt++;
 	    }
-	    wdt_reset();
 
 //		DBG_PRINTLN("3s done");
     
@@ -1026,7 +1114,7 @@ DBG_PRINTLN("console OK");
 			    break;
 			     
 			case 'c':
-			    println_SNS(PSTR(" "),calibrate(), PSTR(" "));
+			    println_SNS(PSTR(" "), calibrate(), PSTR(" "));
 			    break;
 			    
 			case 't':
@@ -1037,7 +1125,7 @@ DBG_PRINTLN("console OK");
 			    return;
 			}
 		    } else { // print param value
-		        byte n=atol((char *)buf);
+		        byte n=atol((char *)buf); // зачем еще и atoi тaщить
 		    
 		        if(n > sizeof(struct Params)/sizeof(long)) break;
 		    
@@ -1091,6 +1179,8 @@ DBG_PRINTLN("console OK");
 //    DBG_PRINTLN("console done");
 
 
+    deepSleep(50); // пусть откалибруется
+
     uint16_t vcc=readVCC();
     if(vcc < VCC_LOW_THRESHOLD) {
 	while((vcc=readVCC())<33){
@@ -1138,7 +1228,14 @@ DBG_PRINTLN("console OK");
         Red_LED_OFF
         beacon_tone(500, 150);
     }
-    powerOffRFM();
+    RFM_off();
+
+
+//    serial.print( (long)uptime / 1000);
+
+//voiceOnBuzzer = true; 
+//sendVOICE("0123456789:#.",  0);
+//voiceOnBuzzer = false;
 
     if(vcc){
 //	if(vcc>42) vcc=42; будем честными
@@ -1162,10 +1259,30 @@ DBG_PRINTLN("console OK");
 	}
 //    }
 
+#if defined(USE_GSM)
+    pinMode(GSM_TX, OUTPUT);
+    pinMode(GSM_EN, OUTPUT);
+    pinMode(GSM_RX, INPUT);
+    pinMode(GSM_INT, INPUT_PULLUP);
 
-    ADCSRA &= ~(1<<ADEN); //Disable ADC
-    ACSR = (1<<ACD); //Disable the analog comparator
-//  DIDR0 = 0x3F; //Disable digital input buffers on all ADC0-ADC5 pins
+/*
+
+//    TODO: init & check GSM
+
+//    включить и попробовать зарегиться в сети - а вдруг СИМ-карта дохлая?
+    gsm.begin(19200);
+
+
+    gsm.end();
+    digitalWrite(GSM_EN, HIGH);
+
+*/
+
+#endif // USE_GSM
+
+    ADCSRA &= ~(1<<ADEN); 	//Disable ADC
+    ACSR = (1<<ACD); 		//Disable the analog comparator
+//  DIDR0 = 0x3F; 		//Disable digital input buffers on all ADC0-ADC5 pins
     DIDR1 = (1<<AIN1D)|(1<<AIN0D); //Disable digital input buffer on AIN1/0
 
 
@@ -1178,22 +1295,19 @@ DBG_PRINTLN("console OK");
 #endif
     power_twi_disable();
     power_spi_disable();
+#if ! defined(USE_GSM)	 /* отключим после окончания работы с GSM */
     power_timer1_disable();
+#endif
     power_timer2_disable();
-
-//    DBG_PRINTLN("setup done 1");
+    // power_adc_disable() ADC нам нужен
 
     wdt_enable(WDTO_8S);
-//    DBG_PRINTLN("setup done 2");
-
-//delay(1000);
 }
 
 
 void loop(void) {
-//    DBG_PRINTLN("loop enter");
 
-    unsigned long timeStart=(millis() + millisCounter);
+    unsigned long timeStart=millis() + millisCounter; // время бодрствования плюс время сна
 
     wdt_enable(WDTO_8S);
 
@@ -1211,7 +1325,7 @@ void loop(void) {
 	beepOnBuzzer_183();
     }
 
-// благодаря deepSleep в конце loop исполняется в батарейном режиме не чаще раза в секунду
+// благодаря deepSleep в конце loop исполняется в батарейном режиме не чаще раза в секунду, если не слушаем MAVlink
 
     vExt = getExtVoltage(); // читаем всегда дабы знать о наличии питания
     
@@ -1230,21 +1344,22 @@ void loop(void) {
 	 
 				     // случилось страшное
 	        lflags.connected = false;     // соединения нет
+	        DBG_PRINTLN("VCC gone");
+	        
 	        if(lflags.pointDirty){
 	            SaveGPSPoint(); // сохранять последнюю найденную точку по обрыву питания
-	            DBG_PRINTLN("VCC gone");
 	        }
 	
 	        disconnectTime = uptime; // пошло время от отсоединения
 	    } else { // нестрашное пропадание питания - сбросим флаг
 	        lflags.wasPower = false;
-	        DBG_PRINTLN("VCC lost restore");
+	        DBG_PRINTLN("VCC ignored lost");
 	    }
 	}
     } else { // питалово есть
 	DBG_PRINTVARLN(vExt);
 
-	lflags.hasPower = true; 
+	lflags.hasPower = true;
 	if(!lflags.wasPower) {
 	    powerTime=uptime;		// запомнили время включения питания
 	    lflags.wasPower = true;
@@ -1259,15 +1374,26 @@ void loop(void) {
 
     lflags.lastPowerState = lflags.hasPower;
 
-    if(lflags.mavlink_active && (millis() - lastMAVBeat) > 1000) { // был но пропал Мавлинк
+// вобщем-то секунда тут конфликтует со временем прослушивания, логичнее было б иметь критерий
+// типа "два периода подряд ничего не было"
+// НО
+// в режиме связи с коптером у нас есть питание и слушаем всегда, а пропадание одного питания достаточно
+// чтобы бить тревогу, МАВлинк контролируется на случай зависания автопилота
+
+    if(lflags.mavlink_active && (millis() - lastMAVBeat) > 500) { // был но пропал Мавлинк и 0.5сек нету
 	if(lflags.motor_armed) { 	// на ходу пропал - 
 	    lflags.connected = false;     // соединения нет
+	    disconnectTime = uptime; // пошло время от отсоединения
+
 	    if(lflags.pointDirty){
 		DBG_PRINTLN("MAVLINK gone");
 
 	        SaveGPSPoint(); 	// сохранять последнюю найденную точку по обрыву MAVlink
 	    }
-	    disconnectTime = uptime; // пошло время от отсоединения
+	    
+	    if(lflags.hasPower) { // питание есть а связь пропала без дизарма - завис автопилот! Сработка парашюта
+		chute_start();
+	    }
 	}
     }
 
@@ -1283,9 +1409,22 @@ void loop(void) {
 		lflags.connected = true;     // соединение ОК
 	    lflags.motor_was_armed=1;
 
+	    if(GPS_data_fresh)
+		home_coord = coord;	// если данные не из памяти то сохранить в роли координат дома
+
 	    DBG_PRINTLN("Armed");
 
         }
+
+	if(mav_severity){	// поступило новое сообщение
+	    //"Crash: Disarming"
+	    static const char PROGMEM pat[]="crash:";
+	    if(strncasecmp_P( mav_txtbuf, pat, sizeof(pat) )==0){
+		lflags.connected = false;     // соединения нет
+		lflags.crash=true;
+		doOnDisconnect();// отработать окончательную потерю связи
+	    }
+	}
     } else { // 		дизарм
 	if(lflags.motor_was_armed){	// моторы были заармлены 
 	    if( (uptime - armTime) < 60) // если меньше минуты то не считается
@@ -1296,19 +1435,19 @@ void loop(void) {
 		DBG_PRINTLN("disarm lock");
 
 	    }
+
 	}
     }
     
     lflags.last_armed_status = lflags.motor_armed;
-    
-//    if(disarmTime && (uptime - disarmTime) > DISARM_DELAY_TIME) { // дизарм, и за 2 минуты ничего не произошло
+
+//  был дизарм
     if(disarmTime && (uptime - disarmTime) > DISARM_DELAY_TIME  ) { // дизарм, и за 2 минуты ничего не произошло
 	    lflags.connected = false;     // будем считать что соединения нет
 	    disconnectTime = uptime; // пошло время от отсоединения
 	    disarmTime=0;
 
 	    DBG_PRINTLN("disarm disconnect");
-
     }
 
 
@@ -1538,12 +1677,12 @@ void loop(void) {
 
 #if !defined(DEBUG) &&  defined(DEBUG_B)
 		power_usart0_enable();    
-		serial.begin(TELEMETRY_SPEED, rxBuf, RX_SIZE, txBuf, TX_SIZE);
+		serial.begin(TELEMETRY_SPEED);
 #endif
 		lflags.listenGPS = true; // включим прослушивание;
 		gpsOffTime = millis() + p.GPS_MonDuration; // время выключения
 
-		coord = end; //coord.lat=coord.lon=NAN;		// сбросим принятые данные
+		coord = bad_coord; //coord.lat=coord.lon=NAN;		// сбросим принятые данные
 		mav_satellites_visible=0;
 
 	    
@@ -1581,9 +1720,9 @@ void loop(void) {
 	NextListenTime = uptime + p.ListenInterval;
     }
 
-delay_50();
   
     if(!lflags.hasPower && !lflags.listenGPS) { // если не слушаем GPS и на батарее то спим до конца секунды
+delay_50(); // чтобы порт успел передать до засыпания все что накопилось
 	// Sleep till the end of a second
         unsigned  long timeNow=(millis() + millisCounter);
         deepSleep(1000L - ( timeNow -  timeStart ) % 1000 + TIMER_CORRECTION);

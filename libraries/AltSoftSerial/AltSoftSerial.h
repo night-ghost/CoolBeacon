@@ -25,8 +25,10 @@
 #define AltSoftSerial_h
 
 #include <inttypes.h>
+#include "../SingleSerial/BetterStream.h"
 
 #include "Arduino.h"
+
 
 #if defined(__arm__) && defined(CORE_TEENSY)
 #define ALTSS_BASE_FREQ F_BUS
@@ -34,7 +36,7 @@
 #define ALTSS_BASE_FREQ F_CPU
 #endif
 
-class AltSoftSerial : public Stream
+class AltSoftSerial : public BetterStream
 {
 public:
 	AltSoftSerial() { }
@@ -45,22 +47,30 @@ public:
 	byte read();
 	byte available();
 
-	byte write(uint8_t byte) { writeByte(byte); return 1; }
+	size_t write(uint8_t byte);
 	void flush() { flushOutput(); }
 	using Print::write;
-	static void flushInput();
-	static void flushOutput();
+	static inline void flushInput() { rx_buffer_head = rx_buffer_tail; };
+	static inline void flushOutput() { while (tx_state) /* wait */ ; } 
 	// for drop-in compatibility with NewSoftSerial, rxPin & txPin ignored
-	AltSoftSerial(uint8_t rxPin, uint8_t txPin, bool inverse = false) { }
+//	AltSoftSerial(uint8_t rxPin, uint8_t txPin, bool inverse = false) { }
 //	bool listen() { return false; }
 //	bool isListening() { return true; }
-	bool overflow() { bool r = timing_error; timing_error = false; return r; }
+	inline bool overflow() { bool r = timing_error; timing_error = false; return r; }
 //	static int library_version() { return 1; }
-	static void enable_timer0(bool enable) { }
+//	static void enable_timer0(bool enable) { }
 	static bool timing_error;
-private:
-	static void init(uint32_t cycles_per_bit);
-	static void writeByte(uint8_t byte);
+//private:
+	static volatile uint8_t rx_buffer_head;
+	static volatile uint8_t rx_buffer_tail;
+	
+	static volatile uint8_t tx_buffer_head;
+	static volatile uint8_t tx_buffer_tail;
+
+	static volatile uint8_t rx_state;
+	static volatile uint8_t tx_state;
+
+	static inline void init(uint32_t cycles_per_bit);
 };
 
 #endif

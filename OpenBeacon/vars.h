@@ -213,7 +213,7 @@ RAM:012E Требует индивидуальной процедуры подб
 */    uint32_t ExtVoltageWarn;
 
 } p = { // начальные значения
-    446031200,
+    446031250,
     200,
     0,
     10,
@@ -225,14 +225,14 @@ RAM:012E Требует индивидуальной процедуры подб
     1500,
     3,
     3,
-    50,
+    50,		//ListenDuration
     3,
     5,
     0,
-    5,
+    5, 	// SearchGPS_time
     1,
-    1,
-    0x6B1, // старший байт - номер ноги, младший - тон
+    1,	// boolWakeGPSvoice
+    0x6B1, // WakeBuzzerParams  старший байт - номер ноги, младший - тон
     5,	   // номер ноги вспышки
     0,
     3,
@@ -294,6 +294,8 @@ struct loc_flags {
     bool listenGPS;   // состояние - слушаем или нет GPS
 
     bool connected;  // в багдаде все спокойно, ничего не оторвалось и мы на внешнем питании - можно не скромничать
+    bool crash;		// c мавлинка пришло сообщение о краше
+
     bool wasPower;   // было подано питание с коптера
     bool hasPower;
     bool lastPowerState; // предыдущее состояние для отслеживания изменений
@@ -301,20 +303,24 @@ struct loc_flags {
     bool motor_armed;	// текущее состояние
     bool motor_was_armed;// флаг "моторы были включены" навсегда
     bool last_armed_status; // предыдущее состояние для отслеживания изменений
+    
 };
 
 struct loc_flags lflags = {0,0,0,0,0,0,0}; // все булевые флаги кучей
 
+#define BAD_COORD 0xffffffff
+
 
 // из mavlink координаты идут в LONG,  домноженные на 10000000
+//                      максимальное беззнаковое  - 4294967296
 // и  нет никакого смысла связываться с float!
 struct Coord {
     long lat;
     long lon;
-} coord;
+} coord, home_coord={BAD_COORD,BAD_COORD}; // домашних координат нет
 
-#define BAD_COORD 0xffffffff
-Coord end ={BAD_COORD,BAD_COORD};
+
+Coord bad_coord ={BAD_COORD,BAD_COORD};
 
 byte gps_points_count; // количество принятых точек, для фильтрации
 
@@ -329,7 +335,7 @@ uint32_t  lastPointTime; // время с последней точки от GPS
 
 byte BuzzerToneDly, BuzzerPin, FlashPin;
 
-uint32_t watchdogTime_us = 16000;
+uint32_t watchdogTime_us = 0; // было 16000 но все равно калибровать будем
 
 uint32_t millisCounter = 0;
 uint8_t ItStatus1;
@@ -348,6 +354,7 @@ uint32_t growTimeInSeconds;
 volatile byte preambleDetected, preambleRSSI;
 
 
+byte lastRSSI = 99; // сначала полный ибо мы рядом, потом потрем
 byte Got_RSSI;
 
 uint16_t cycles_count;
@@ -365,7 +372,7 @@ uint32_t  NextListenTime, Next_GPS_Time, Uptime_on_wakeup;
 uint32_t  gpsOffTime; // время выключения прослушивания GPS
 
 #define MESSAGE_SIZE 24
-char messageBuff[MESSAGE_SIZE + 1] = "00*"; // буфер вывода координат для сообщения голосом
+char messageBuff[MESSAGE_SIZE + 1] = "000"; // буфер вывода координат для сообщения голосом
 
 #define SERIAL_BUFSIZE 19 
 byte buf[SERIAL_BUFSIZE+1]; // буфер команд с интерфейса и прочих надобностей
@@ -392,6 +399,8 @@ byte         apm_mav_system;
 byte         apm_mav_component;
 //long       mav_alt_gps;
 
+byte mav_severity;  // важность сообщения и само сообщение
+char mav_txtbuf[51]; // crash disarm передается только так
 
 
 

@@ -3,10 +3,13 @@
 // printf without float
 #define SKIP_FLOAT
 
-#include "Arduino.h"
 
 #include <SingleSerial.h>
 //#include <FastSerial.h>
+
+
+#include "Arduino.h"
+
 #include "bufstream.h"
 // Get the common arduino functions
 

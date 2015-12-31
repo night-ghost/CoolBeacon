@@ -19,10 +19,13 @@
 #define GPS_COORD_FMT 3
 
 // Длительность одного "пика" (мс). По умолчанию: 1 секунда (1000мс)
-#define BEACON_BEEP_DURATION 1000
+#define BEACON_BEEP_DURATION 600
 
 #define DISARM_DELAY_TIME 180 // время после дизарма до начала паники, секунды
+
 #define LAST_POINT_DISTANCE 3 // минимальное расстояние в метрах между точками
+
+#define MIN_HOME_DISTANCE 10 // ближе чем 10 метров от точки взлета - не активизируем GSM
 
 // Корректировка таймера. Если спешит или отстает, то ставим в ноль, DEADTIME минут на 10 и засекаем время до первой посылки..
 // Считаем разницу в процентах и выставляем корректировку ( 1000 / (процент погрешности) )
@@ -41,15 +44,28 @@
 #define BUZZER_PIN_BIT (_BV(PB4))
 
 // эти ноги выведены на разъем приемника
-#define VBAT_PIN 18 // A5 (PC5) - Vext_bat
-//#define VCC_PIN 18 // A44(PC5) - Vcc_bat - via magick mode
+#define VBAT_PIN 18 // A4 (PC5)  - Vext_bat (1К на землю, 20К на батарею)
+//#define VCC_PIN 18 // A4(PC5) - Vcc_bat - via magick mode
+#
 
-#define GSM_TX
-#define GSM_RX
-#define GSM_EN
+#define USE_GSM // используем или нет
+
+#define GSM_TX 9
+#define GSM_RX 8
+#define GSM_EN 10
 #define GSM_INT PD3
 
-/* инструкция отсюда - http://forum.rcdesign.ru/blogs/127344/blog18303.html
+#define GSM_SPEED 19200
+
+#define APN "internet.beeline.ru"
+
+
+
+/* ------------------------------
+
+ про дополнительный проводочек
+ 
+ инструкция отсюда - http://forum.rcdesign.ru/blogs/127344/blog18303.html
 
 но у RFM нога 15 это SDN - описание
 --
@@ -122,3 +138,13 @@ TCCR1A = (1<<WGM10);
 
 #define EN 1
 #define RU 2
+
+#if BUZZER_PIN
+ #if defined(BUZZER_PIN_PORT) && defined(BUZZER_PIN_BIT)
+  #define BUZZER_HIGH (BUZZER_PIN_PORT |=  BUZZER_PIN_BIT)
+  #define BUZZER_LOW  (BUZZER_PIN_PORT &= ~BUZZER_PIN_BIT)
+ #else
+  #define BUZZER_HIGH (*buzzerPort |=  buzzerBit)
+  #define BUZZER_LOW  (*buzzerPort &= ~buzzerBit)
+ #endif
+#endif

@@ -1,9 +1,21 @@
-#include "compat.h"
+//#include "compat.h"
 
 #define HardwareSerial_h
-#include "../GCS_MAVLink/include/mavlink/v1.0/mavlink_types.h"
-#include "../GCS_MAVLink/include/mavlink/v1.0/ardupilotmega/mavlink.h"
 
+#include <GCS_MAVLink.h>
+
+//#include "../GCS_MAVLink/include/mavlink/v1.0/mavlink_types.h"
+//#include "../GCS_MAVLink/include/mavlink/v1.0/ardupilotmega/mavlink.h"
+
+// gcs_mavlink.h not included, so
+// severity levels used in STATUSTEXT messages
+enum gcs_severity {
+    SEVERITY_LOW=1,
+    SEVERITY_MEDIUM,
+    SEVERITY_HIGH,
+    SEVERITY_CRITICAL,
+    SEVERITY_USER_RESPONSE
+};
 
 // static int packet_drops = 0; unused
 // static int parse_error = 0; unused
@@ -170,6 +182,15 @@ packet.press_diff = press_diff;
 */
                 break;
 #endif
+
+
+	    case MAVLINK_MSG_ID_STATUSTEXT:
+		mav_severity =  mavlink_msg_statustext_get_severity(&msg);
+		if(SEVERITY_HIGH == mav_severity) { // обрабатываем новое системное сообщение только высокой важности
+		    byte len= mavlink_msg_statustext_get_text(&msg, mav_txtbuf);
+		    mav_txtbuf[len]=0;
+		} else
+		    mav_severity = 0; // иначе игнорируем
 
             default:
                 //Do nothing
