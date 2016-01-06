@@ -284,32 +284,36 @@ const byte PROGMEM  ParamLength[] = {
 #define TX_SIZE 16
 uint8_t rxBuf[RX_SIZE], txBuf[TX_SIZE];
 
+
+// булевые флаги кучей
 struct loc_flags {
     bool mavlink_got; 		// флаг получения пакета
     bool mavlink_active; 	// флаг активности (навсегда)
     bool mavbeat;		// MAVLink session control
+    bool callActive;	// недавно принят вызов
     
     bool hasGPSdata;  // есть координаты для сообщения
     bool pointDirty;  // последняя принятая точка не сохранена в EEPROM
     bool listenGPS;   // состояние - слушаем или нет GPS
+    bool gsm_ok;	// инициализация удалась
+
 
     bool connected;  // в багдаде все спокойно, ничего не оторвалось и мы на внешнем питании - можно не скромничать
     bool crash;		// c мавлинка пришло сообщение о краше
 
-    bool wasPower;   // было подано питание с коптера
-    bool hasPower;
+    bool hasPower;   // текущее состояние питания
     bool lastPowerState; // предыдущее состояние для отслеживания изменений
+    bool wasPower;   // ранее было подано питание с коптера
     
     bool motor_armed;	// текущее состояние
-    bool motor_was_armed;// флаг "моторы были включены" навсегда
     bool last_armed_status; // предыдущее состояние для отслеживания изменений
+    bool motor_was_armed;// флаг "моторы были включены" навсегда
     
 };
 
 struct loc_flags lflags = {0,0,0,0,0,0,0}; // все булевые флаги кучей
 
 #define BAD_COORD 0xffffffff
-
 
 // из mavlink координаты идут в LONG,  домноженные на 10000000
 //                      максимальное беззнаковое  - 4294967296
@@ -370,6 +374,8 @@ uint16_t cell_voltage;
 uint16_t GpsErrorCount;
 uint32_t  NextListenTime, Next_GPS_Time, Uptime_on_wakeup;
 uint32_t  gpsOffTime; // время выключения прослушивания GPS
+uint32_t chuteTime;  // время след проверки парашюта
+uint32_t callTime;  // время получения вызова (его окончания)
 
 #define MESSAGE_SIZE 24
 char messageBuff[MESSAGE_SIZE + 1] = "000"; // буфер вывода координат для сообщения голосом
@@ -415,6 +421,9 @@ byte buzzerBit;
 // работа со статическими временными переменными намного проще чем со стеком
 Coord p1, p2; // временные координаты для работы с треком
 uint16_t crc; // статический буфер выгоднее 
+
+
+
 
 //-----  EEPROM  --------------------------------------------------------------------
 

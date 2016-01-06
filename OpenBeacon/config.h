@@ -27,6 +27,8 @@
 
 #define MIN_HOME_DISTANCE 10 // ближе чем 10 метров от точки взлета - не активизируем GSM
 
+#define CHUTE_INTERVAL 200 // проверка парашюта каждые 0.2 секунды
+
 // Корректировка таймера. Если спешит или отстает, то ставим в ноль, DEADTIME минут на 10 и засекаем время до первой посылки..
 // Считаем разницу в процентах и выставляем корректировку ( 1000 / (процент погрешности) )
 // Плюс, если спешит. Минус, если отстает.
@@ -50,12 +52,14 @@
 
 #define USE_GSM // используем или нет
 
+#define GSM_DTR 6
+#define GSM_RING 7
 #define GSM_TX 9
 #define GSM_RX 8
 #define GSM_EN 10
 #define GSM_INT PD3
 
-#define GSM_SPEED 19200
+#define GSM_SPEED 38400// 9600 // 19200 //
 
 #define APN "internet.beeline.ru"
 

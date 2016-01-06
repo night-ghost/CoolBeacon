@@ -86,7 +86,6 @@ uint8_t spiReadData(void)
   SCK_off;
 
   for (uint8_t i = 8; i > 0; i--) {   //read fifo data byte
-
     uint8_t r = 0;
     SCK_on;
     NOP();
@@ -95,7 +94,6 @@ uint8_t spiReadData(void)
 
     SCK_off;
     NOP();
-
   }
 
   return(Result);
@@ -120,24 +118,21 @@ void spiWriteRegister(uint8_t address, uint8_t data)
 
 
 
-void beacon_tone(int16_t hz, uint16_t len)
+void beacon_tone(uint16_t hz, uint16_t len)
 {
-  int16_t d = 500 / hz; // somewhat limited resolution ;)
+  uint16_t d = 500000L / hz; // минимальная используемая частота - 160гц, то есть макс задержка 3125 прекрасно лезет в 16 бит
 
-  if (d < 1) {
-    d = 1;
-  }
-
-  uint32_t cycles = millis() + len;
-
-  while(millis()<cycles) {
+  for(uint32_t cycles = millis() + len; millis()<cycles; ) {
     SDI_on;
-    delay(d);
+    delayMicroseconds(d);
     SDI_off;
-    delay(d);
+    delayMicroseconds(d);
   }
 }
 
+void beacon_tone(uint16_t hz) {
+    beacon_tone(hz, BEACON_BEEP_DURATION);
+}
 
 void narcoleptic_sleep_down(uint8_t wdt_period ) {
     narcoleptic_sleep(wdt_period,SLEEP_MODE_PWR_DOWN);
@@ -513,7 +508,7 @@ void adc_setup(){
 void RFM_SetPower(byte fInit, uint8_t mode, uint8_t power) {
     if(fInit) {
 	initRFM();
-        delay_10();
+        delay_50();
     }
     spiWriteRegister(0x6d, power );
     spiWriteRegister(0x07, mode );
@@ -527,11 +522,12 @@ void RFM_off(void)
   spiWriteRegister(0x07, RF22B_PWRSTATE_POWERDOWN);
 }
 
+
 void sendBeacon(void)
 {
     RFM_SetPower(1, RF22B_PWRSTATE_TX, RFM_MAX_POWER);
 
-  if((byte)p.HighSavePower) {
+/*  if((byte)p.HighSavePower) {
     for(unsigned int i=30*BEACON_BEEP_DURATION/1000; i>0;i--) {
       spiWriteRegister(0x7, RF22B_PWRSTATE_TX);		// TX on, XT on
       spiWriteRegister(0x6d, RFM_MAX_POWER);
@@ -541,19 +537,19 @@ void sendBeacon(void)
       delay_10();
     }
   } else {
-//      spiWriteRegister(0x6d, RFM_MAX_POWER);
-      beacon_tone(500, BEACON_BEEP_DURATION);
-  }
+*/
+      beacon_tone(500);
+//  }
 
-  RFM_SetPower(0,RF22B_PWRSTATE_TX,RFM_MID_POWER);
-  //spiWriteRegister(0x6d, RFM_MID_POWER);   // 4 set mid power 15mW
+//  RFM_SetPower(0,RF22B_PWRSTATE_TX,RFM_MID_POWER);
+  spiWriteRegister(0x6d, RFM_MID_POWER);   // 4 set mid power 15mW
   delay_10();
-  beacon_tone(250, BEACON_BEEP_DURATION);
+  beacon_tone(250);
 
 //     RFM_SetPower(0,RF22B_PWRSTATE_TX, RFM_MIN_POWER);
   spiWriteRegister(0x6d, RFM_MIN_POWER);   // 0 set min power 1mW
   delay_10();
-  beacon_tone(160, BEACON_BEEP_DURATION);
+  beacon_tone(160);
 
   RFM_off();
 }

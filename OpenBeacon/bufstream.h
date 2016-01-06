@@ -1,7 +1,5 @@
-
 #ifndef bufstream_h
 #define bufstream_h
-
 
 /*
     простенький класс для вывода в буферную память, в основном чтобы использовать printf_P

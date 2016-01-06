@@ -955,9 +955,11 @@ void _sendVOICE(char *s, byte beeps){
     TCCR2B = (1<<CS20);                     // CLK/1 и режим Fast PWM
     OCR2A=0x0; // начальное значение компаратора
 
+    {
 //    uint16_t dly = (( p.SpeechRate + 1400 ) * 155L ) / 1500; // 155uS default 
-    uint16_t dly = (( p.SpeechRate + 1400 ) * 220L ) / 1500; // 160uS  - время расчета не входит в задержку
-    inc = dly/4; // инкремент таймера 0
+	uint16_t dly = (( p.SpeechRate + 1400 ) * 220L ) / 1500; // 160uS  - время расчета не входит в задержку
+	inc = dly/4; // инкремент таймера 0
+    }
  
     if(beeps){
 	for(; beeps>0; beeps--){
@@ -1005,26 +1007,19 @@ void _sendVOICE(char *s, byte beeps){
         uint8_t s=pgm_read_byte(wav++);
 
         sample_prev = adpcmDec(s, sample_prev, &index);
-	//      OCR2A = (byte)(((int)sample_prev) / 380  - 96);
-//        delayMicroseconds(dly);
 	fInt=0;
 	voicePWM = (byte)(((int)sample_prev) / 380  - 96);
     	while(!fInt);	// wait for interrupt
-	
 
         sample_prev = adpcmDec(s>>4, sample_prev, &index);
-        //OCR2A = (byte)(((int)sample_prev) / 380  - 96);
-        //delayMicroseconds(dly);
     	voicePWM = (byte)(((int)sample_prev) / 380  - 96); // store next PWM
     	fInt=0;
     	while(!fInt);	// wait for interrupt
-        
     }
-    //OCR2A = 0; // убрать ШИМ на время паузы, а не оставлять последнее значение
-//    voicePWM=0;
+//    voicePWM=0; // убрать ШИМ на время паузы, а не оставлять последнее значение - так хуже
     fInt=0;
     while(!fInt);	 // догенерить остаток
-    TIMSK0 &= ~(1 << OCIE0A); // запретим compare  interrupt
+    TIMSK0 &= ~(1 << OCIE0A); // запретим compare interrupt
     delay_50(); // пауза между цифрами
 
   }
@@ -1035,6 +1030,7 @@ void _sendVOICE(char *s, byte beeps){
   TCCR2A = 0;
   TCCR2B = 0;
  
+    BUZZER_LOW; // могли говорить в пищальник и забыть
   power_timer2_disable();
 
 }

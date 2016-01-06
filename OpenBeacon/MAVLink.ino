@@ -1,5 +1,3 @@
-//#include "compat.h"
-
 #define HardwareSerial_h
 
 #include <GCS_MAVLink.h>

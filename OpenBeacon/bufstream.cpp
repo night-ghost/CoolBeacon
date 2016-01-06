@@ -3,15 +3,12 @@
 // printf without float
 #define SKIP_FLOAT
 
-
 #include <SingleSerial.h>
-//#include <FastSerial.h>
 
-
+// Get the common arduino functions
 #include "Arduino.h"
 
 #include "bufstream.h"
-// Get the common arduino functions
 
 
 byte * BS::bufpos;
