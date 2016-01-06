@@ -25,15 +25,10 @@
 #define AltSoftSerial_h
 
 #include <inttypes.h>
-
 #include "../SingleSerial/BetterStream.h"
 
-#if ARDUINO >= 100
 #include "Arduino.h"
-#else
-#include "WProgram.h"
-#include "pins_arduino.h"
-#endif
+
 
 #if defined(__arm__) && defined(CORE_TEENSY)
 #define ALTSS_BASE_FREQ F_BUS
@@ -46,30 +41,40 @@ class AltSoftSerial : public BetterStream
 public:
 	AltSoftSerial() { }
 	~AltSoftSerial() { end(); }
-	inline static void begin(uint32_t baud) { init((ALTSS_BASE_FREQ + baud / 2) / baud); }
+	
+	// 115200 - 139 
+	// 9600   - 1667, /8 -> 208
+	// так что можно уложиться и в 8-битный таймер
+	static void init(uint32_t cycles_per_bit);
+	static inline void begin(uint32_t baud) { init((ALTSS_BASE_FREQ + baud / 2) / baud); }
 	static void end();
-	uint8_t peek();
-	uint8_t read();
-	uint8_t available();
-	static void flushInput();
-	static void flushOutput();
+	byte peek();
+	byte read();
+	byte available();
 
 	size_t write(uint8_t byte);
-
-	inline void flush() { flushOutput(); }
-
+	void flush() { flushOutput(); }
 	using Print::write;
+	static inline void flushInput() { rx_buffer_head = rx_buffer_tail; };
+	static inline void flushOutput() { while (tx_state) /* wait */ ; } 
 	// for drop-in compatibility with NewSoftSerial, rxPin & txPin ignored
-	AltSoftSerial(uint8_t rxPin, uint8_t txPin, bool inverse = false) { }
-	inline bool listen() { return false; }
-	inline bool isListening() { return true; }
-//	bool overflow() { bool r = timing_error; timing_error = false; return r; }
-//	static uint8_t library_version() { return 1; }
+//	AltSoftSerial(uint8_t rxPin, uint8_t txPin, bool inverse = false) { }
+//	bool listen() { return false; }
+//	bool isListening() { return true; }
+	inline bool overflow() { bool r = timing_error; timing_error = false; return r; }
+//	static int library_version() { return 1; }
 //	static void enable_timer0(bool enable) { }
-//	static bool timing_error;
-private:
-	static void init(uint32_t cycles_per_bit);
-//	static void writeByte(uint8_t byte);
+	static bool timing_error;
+//private:
+	static volatile uint8_t rx_buffer_head;
+	static volatile uint8_t rx_buffer_tail;
+	
+	static volatile uint8_t tx_buffer_head;
+	static volatile uint8_t tx_buffer_tail;
+
+	static volatile uint8_t rx_state;
+	static volatile uint8_t tx_state;
+
 };
 
 #endif

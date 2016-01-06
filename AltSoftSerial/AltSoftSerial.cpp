@@ -36,28 +36,36 @@
 /**          Initialization            **/
 /****************************************/
 
-static uint16_t ticks_per_bit=0;
-//bool AltSoftSerial::timing_error=false;
+#define TX_BUFFER_SIZE 16
+#define RX_BUFFER_SIZE 64
 
-static uint8_t rx_state;
+
+static uint16_t ticks_per_bit=0;
+bool AltSoftSerial::timing_error=false;
+
+volatile uint8_t AltSoftSerial::rx_state;
 static uint8_t rx_byte;
 static uint8_t rx_bit = 0;
 static uint16_t rx_target;
 static uint16_t rx_stop_ticks=0;
-static volatile uint8_t rx_buffer_head;
-static volatile uint8_t rx_buffer_tail;
-#define RX_BUFFER_SIZE 128
+
+volatile uint8_t AltSoftSerial::rx_buffer_head; 
+volatile uint8_t AltSoftSerial::rx_buffer_tail;
+
 static volatile uint8_t rx_buffer[RX_BUFFER_SIZE];
 
-static volatile uint8_t tx_state=0;
+volatile uint8_t AltSoftSerial::tx_state=0;
 static uint8_t tx_byte;
 static uint8_t tx_bit;
-static volatile uint8_t tx_buffer_head;
-static volatile uint8_t tx_buffer_tail;
-#define TX_BUFFER_SIZE 16
+volatile uint8_t AltSoftSerial::tx_buffer_head;
+volatile uint8_t AltSoftSerial::tx_buffer_tail;
+
 static volatile uint8_t tx_buffer[TX_BUFFER_SIZE];
 
 
+//#ifndef INPUT_PULLUP
+//#define INPUT_PULLUP INPUT
+//#endif
 
 void AltSoftSerial::init(uint32_t cycles_per_bit)
 {
@@ -65,23 +73,22 @@ void AltSoftSerial::init(uint32_t cycles_per_bit)
 		CONFIG_TIMER_NOPRESCALE();
 	} else {
 		cycles_per_bit /= 8;
-		if (cycles_per_bit < 7085) {
+		if (cycles_per_bit < 7085) { // макс число, после умножения на 9 влезающее в INT
 			CONFIG_TIMER_PRESCALE_8();
 		} else {
 			return; // minimum 283 baud at 16 MHz clock
 		}
 	}
 	ticks_per_bit = cycles_per_bit;
-	rx_stop_ticks = cycles_per_bit * 37L / 4;
+	rx_stop_ticks = cycles_per_bit * 37L / 4; //чуть больше чем 9. И в общем-то тут переполнение... считать надо в long
 	pinMode(INPUT_CAPTURE_PIN, INPUT_PULLUP);
-	digitalWrite(OUTPUT_COMPARE_A_PIN, HIGH);
 	pinMode(OUTPUT_COMPARE_A_PIN, OUTPUT);
-	rx_state = 0;
-	rx_buffer_head = 0;
-	rx_buffer_tail = 0;
-	tx_state = 0;
-	tx_buffer_head = 0;
-	tx_buffer_tail = 0;
+	AltSoftSerial::rx_state = 0;
+	AltSoftSerial::rx_buffer_head = 0;
+	AltSoftSerial::rx_buffer_tail = 0;
+	AltSoftSerial::tx_state = 0;
+	AltSoftSerial::tx_buffer_head = 0;
+	AltSoftSerial::tx_buffer_tail = 0;
 	ENABLE_INT_INPUT_CAPTURE();
 }
 
@@ -104,35 +111,38 @@ size_t AltSoftSerial::write(uint8_t b)
 {
 	uint8_t intr_state, head;
 
-	head = tx_buffer_head + 1;
+	head = AltSoftSerial::tx_buffer_head + 1;
 	if (head >= TX_BUFFER_SIZE) head = 0;
-	while (tx_buffer_tail == head) ; // wait until space in buffer
+
+	while (AltSoftSerial::tx_buffer_tail == head) ; // wait until space in buffer
+
 	intr_state = SREG;
 	cli();
-	if (tx_state) {
+	if (AltSoftSerial::tx_state) {
 		tx_buffer[head] = b;
-		tx_buffer_head = head;
+		AltSoftSerial::tx_buffer_head = head;
 	} else {
-		tx_state = 1;
+		AltSoftSerial::tx_state = 1;
 		tx_byte = b;
 		tx_bit = 0;
 		ENABLE_INT_COMPARE_A();
 		CONFIG_MATCH_CLEAR();
-		SET_COMPARE_A(GET_TIMER_COUNT() + 16);
+		SET_COMPARE_A(GET_TIMER_COUNT() + 16); // прерывание через 16 тиков
 	}
 	SREG = intr_state;
+	
 	return 1;
 }
 
 
+
 ISR(COMPARE_A_INTERRUPT)
 {
-	uint8_t state, byte, bit, tail;
+	uint8_t state, byte, bit, head, tail;
 	uint16_t target;
 
-	state = tx_state;
+	state = AltSoftSerial::tx_state;
 	byte = tx_byte;
-	
 	target = GET_COMPARE_A();
 	while (state < 10) {
 		target += ticks_per_bit;
@@ -151,25 +161,26 @@ ISR(COMPARE_A_INTERRUPT)
 			SET_COMPARE_A(target);
 			tx_bit = bit;
 			tx_byte = byte;
-			tx_state = state;
+			AltSoftSerial::tx_state = state;
 			// TODO: how to detect timing_error?
 			return;
 		}
 	}
-	tail = tx_buffer_tail;
-	if (tx_buffer_head == tail) {
+	head = AltSoftSerial::tx_buffer_head;
+	tail = AltSoftSerial::tx_buffer_tail;
+	if (head == tail) {
 		if (state == 10) {
 			// Wait for final stop bit to finish
-			tx_state = 11;
+			AltSoftSerial::tx_state = 11;
 			SET_COMPARE_A(target + ticks_per_bit);
 		} else {
-			tx_state = 0;
+			AltSoftSerial::tx_state = 0;
 			CONFIG_MATCH_NORMAL();
 			DISABLE_INT_COMPARE_A();
 		}
 	} else {
 		if (++tail >= TX_BUFFER_SIZE) tail = 0;
-		tx_buffer_tail = tail;
+		AltSoftSerial::tx_buffer_tail = tail;
 		tx_byte = tx_buffer[tail];
 		tx_bit = 0;
 		CONFIG_MATCH_CLEAR();
@@ -177,15 +188,16 @@ ISR(COMPARE_A_INTERRUPT)
 			SET_COMPARE_A(target + ticks_per_bit);
 		else
 			SET_COMPARE_A(GET_TIMER_COUNT() + 16);
-		tx_state = 1;
+		AltSoftSerial::tx_state = 1;
 		// TODO: how to detect timing_error?
 	}
 }
 
+/*
 void AltSoftSerial::flushOutput(void)
 {
-	while (tx_state) /* wait */ ;
-}
+	while (AltSoftSerial::tx_state) ; //  wait 
+}*/
 
 
 /****************************************/
@@ -208,13 +220,13 @@ ISR(CAPTURE_INTERRUPT)
 		CONFIG_CAPTURE_RISING_EDGE();
 		rx_bit = 0x80;
 	}
-	state = rx_state;
+	state = AltSoftSerial::rx_state;
 	if (state == 0) {
 		if (!bit) {
 			SET_COMPARE_B(capture + rx_stop_ticks);
 			ENABLE_INT_COMPARE_B();
 			rx_target = capture + ticks_per_bit + ticks_per_bit/2;
-			rx_state = 1;
+			AltSoftSerial::rx_state = 1;
 		}
 	} else {
 		target = rx_target;
@@ -226,20 +238,20 @@ ISR(CAPTURE_INTERRUPT)
 			state++;
 			if (state >= 9) {
 				DISABLE_INT_COMPARE_B();
-				head = rx_buffer_head + 1;
+				head = AltSoftSerial::rx_buffer_head + 1;
 				if (head >= RX_BUFFER_SIZE) head = 0;
-				if (head != rx_buffer_tail) {
+				if (head != AltSoftSerial::rx_buffer_tail) {
 					rx_buffer[head] = rx_byte;
-					rx_buffer_head = head;
+					AltSoftSerial::rx_buffer_head = head;
 				}
 				CONFIG_CAPTURE_FALLING_EDGE();
 				rx_bit = 0;
-				rx_state = 0;
+				AltSoftSerial::rx_state = 0;
 				return;
 			}
 		}
 		rx_target = target;
-		rx_state = state;
+		AltSoftSerial::rx_state = state;
 	}
 	//if (GET_TIMER_COUNT() - capture > ticks_per_bit) AltSoftSerial::timing_error = true;
 }
@@ -250,62 +262,64 @@ ISR(COMPARE_B_INTERRUPT)
 
 	DISABLE_INT_COMPARE_B();
 	CONFIG_CAPTURE_FALLING_EDGE();
-	state = rx_state;
+	state = AltSoftSerial::rx_state;
 	bit = rx_bit ^ 0x80;
 	while (state < 9) {
 		rx_byte = (rx_byte >> 1) | bit;
 		state++;
 	}
-	head = rx_buffer_head + 1;
+	head = AltSoftSerial::rx_buffer_head + 1;
 	if (head >= RX_BUFFER_SIZE) head = 0;
-	if (head != rx_buffer_tail) {
+	if (head != AltSoftSerial::rx_buffer_tail) {
 		rx_buffer[head] = rx_byte;
-		rx_buffer_head = head;
+		AltSoftSerial::rx_buffer_head = head;
 	}
-	rx_state = 0;
+	AltSoftSerial::rx_state = 0;
 	CONFIG_CAPTURE_FALLING_EDGE();
 	rx_bit = 0;
 }
 
 
 
-uint8_t AltSoftSerial::read(void)
+byte AltSoftSerial::read(void)
 {
-	uint8_t tail, out;
+	uint8_t head, tail, out;
 
-	tail = rx_buffer_tail;
-	if (rx_buffer_head == tail) return 0;
+	head = AltSoftSerial::rx_buffer_head;
+	tail = AltSoftSerial::rx_buffer_tail;
+	if (head == tail) return 0;
 	if (++tail >= RX_BUFFER_SIZE) tail = 0;
 	out = rx_buffer[tail];
-	rx_buffer_tail = tail;
+	AltSoftSerial::rx_buffer_tail = tail;
 	return out;
 }
 
-uint8_t AltSoftSerial::peek(void)
+byte AltSoftSerial::peek(void)
 {
-	uint8_t tail;
+	uint8_t head, tail;
 
-	tail = rx_buffer_tail;
-	if (rx_buffer_head == tail) return 0;
+	head = AltSoftSerial::rx_buffer_head;
+	tail = AltSoftSerial::rx_buffer_tail;
+	if (head == tail) return 0;
 	if (++tail >= RX_BUFFER_SIZE) tail = 0;
 	return rx_buffer[tail];
 }
 
-uint8_t AltSoftSerial::available(void)
+byte AltSoftSerial::available(void)
 {
 	uint8_t head, tail;
 
-	head = rx_buffer_head;
-	tail = rx_buffer_tail;
+	head = AltSoftSerial::rx_buffer_head;
+	tail = AltSoftSerial::rx_buffer_tail;
 	if (head >= tail) return head - tail;
 	return RX_BUFFER_SIZE + head - tail;
 }
 
-void AltSoftSerial::flushInput(void)
+/*void AltSoftSerial::flushInput(void)
 {
-	rx_buffer_head = rx_buffer_tail;
+	AltSoftSerial::rx_buffer_head = AltSoftSerial::rx_buffer_tail;
 }
-
+*/
 
 #ifdef ALTSS_USE_FTM0
 void ftm0_isr(void)

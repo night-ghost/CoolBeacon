@@ -80,6 +80,7 @@ LICENSE
 // own includes
 #include "bufstream.h"
 #include "config.h"
+#include "config-phones.h"
 #include "vars.h"
 
 //#include <AP_Common.h>
