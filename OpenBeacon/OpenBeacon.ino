@@ -996,18 +996,42 @@ void doOnDisconnect() {// отработать потерю связи
 //	например передать SMS 
 // и поставить таймер отключения телефонного модуля
 
-    if(!badCoord(&home_coord))
-	if(distance(&home_coord, &coord) < MIN_HOME_DISTANCE) return; // слишком близко от дома
+    if(!badCoord(&home_coord)) {
+	if(distance(&home_coord, &coord) < MIN_HOME_DISTANCE) {
+	    goto exit; // слишком близко от дома
+	}
+    }
 
+
+
+    if(lflags.gsm_ok) {
+	bs.begin((char *)buf);
+	//bs.printf_P(PSTR("www.ykoctpa.ru/map?markers=%s"),messageBuff);
+	bs.printf_P(PSTR("maps.google.ru/maps?q=%s"),messageBuff);       // форматировать координвты под ссылку на карты гугля
+    
+	gsm.set_sleep(false); // leave sleep mode
+	bool fSent=false;
+	fSent = gsm.sendSMS(PSTR(PHONE),  (char *)buf);
+
+#if defined PHONE2
+	fSent = gsm.sendSMS(PSTR(PHONE2), (char *)buf) || fSent;
+#endif
+#if defined PHONE3
+	fSent = gsm.sendSMS(PSTR(PHONE3), (char *)buf) || fSent;
+#endif
+#if defined PHONE4
+	fSent = gsm.sendSMS(PSTR(PHONE4), (char *)buf) || fSent;
+#endif
+
+	if(fSent) {// куда-то отправили
+	}
+	
+    }
 
     nextSearchTime = uptime;	// сразу же включим таймерный маяк
 
-    if(lflags.gsm_ok) {
-	gsm.set_sleep(false); // leave sleep mode
-	gsm.sendSMS( messageBuff, PHONE);
-
-	gsm.end(); // закончим работу и выключим питание
-    }
+exit:
+    gsm.end(); // закончим работу и выключим питание
 }
 
 

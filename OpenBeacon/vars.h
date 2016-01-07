@@ -380,7 +380,7 @@ uint32_t callTime;  // время получения вызова (его око
 #define MESSAGE_SIZE 24
 char messageBuff[MESSAGE_SIZE + 1] = "000"; // буфер вывода координат для сообщения голосом
 
-#define SERIAL_BUFSIZE 19 
+#define SERIAL_BUFSIZE 64 /* 19  */
 byte buf[SERIAL_BUFSIZE+1]; // буфер команд с интерфейса и прочих надобностей
 
 byte eeprom_points_count; // номер текущей точки (указатель записи), кольцо

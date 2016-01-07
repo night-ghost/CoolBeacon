@@ -21,8 +21,11 @@
 #include "compat.h" //   some missing definitions
 #include <AltSoftSerial.h>
 
+#include "bufstream.h"
+
 
 #include "config.h"
+#include "config-phones.h"
 
 #define voiceOnBuzzer false
 
@@ -36,7 +39,7 @@ struct Params {
     long Frequency;
 } p;
 
-#define SERIAL_BUFSIZE 64
+#define SERIAL_BUFSIZE 80
 
 byte buf[SERIAL_BUFSIZE+1];
 
@@ -46,6 +49,9 @@ SingleSerialPort(serial);
 
 #include "gsm.h"
 GSM gsm;
+
+// BuffStream
+BS bs;
 
 
 void setup(void) {
@@ -91,9 +97,27 @@ void setup(void) {
 
 //    gsm.sendUSSD(100);
 
-//    serial.print_P(PSTR("Balance="));
-//    serial.print(gsm.balance());
+    int bal=gsm.balance();
+    serial.print_P(PSTR("Balance="));
+    serial.println(bal);
+
+    serial.print_P(PSTR("sleep"));
+    gsm.set_sleep(true);
+
+    delay(20000);
+
+    serial.print_P(PSTR("sleep wake"));
+    gsm.set_sleep(false);
+
+    bs.begin((char *)buf);
     
+    char messageBuff[]="45.123,45.321";
+    
+//    bs.printf_P(PSTR("www.ykoctpa.ru/map?markers=%s"),messageBuff);
+    bs.printf_P(PSTR("maps.google.ru/maps?q=%s"),messageBuff);
+
+    if(gsm.sendSMS(PSTR(PHONE),(char *)buf))
+	serial.print_P(PSTR("SMS sent!"));
 }
 
 
