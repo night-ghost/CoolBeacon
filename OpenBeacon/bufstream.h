@@ -10,11 +10,11 @@ class BS: public BetterStream
 {
   public:
     BS(void);
-    static void begin(char *p);
-    virtual byte     available(void);
-    virtual byte     read(void);
-    virtual byte     peek(void);
-    virtual void     flush(void);
+    static  void    begin(char *p);
+    virtual byte    available(void);
+    virtual byte    read(void);
+    virtual byte    peek(void);
+    virtual void    flush(void);
     virtual size_t  write(uint8_t c);
     using BetterStream::write;
 

@@ -26,6 +26,13 @@
 
 #include <inttypes.h>
 
+#ifndef RX_BUFFER_SIZE
+#define RX_BUFFER_SIZE 128
+#endif
+#ifndef TX_BUFFER_SIZE
+#define TX_BUFFER_SIZE 16
+#endif
+
 #include "../SingleSerial/BetterStream.h"
 
 #if ARDUINO >= 100
@@ -60,7 +67,7 @@ public:
 
 	using Print::write;
 	// for drop-in compatibility with NewSoftSerial, rxPin & txPin ignored
-	AltSoftSerial(uint8_t rxPin, uint8_t txPin, bool inverse = false) { }
+//	AltSoftSerial(uint8_t rxPin, uint8_t txPin, bool inverse = false) { }
 	inline bool listen() { return false; }
 	inline bool isListening() { return true; }
 //	bool overflow() { bool r = timing_error; timing_error = false; return r; }

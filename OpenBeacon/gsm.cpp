@@ -8,33 +8,25 @@
 Отправка данных на сервер (GSM/GPRS shield)
 Подключаемся к Arduino к контактам 7 и 8. 
 
-Для получения страницы по определенному URL нужно послать следующие команды:
-AT+SAPBR=1,1    //Открыть несущую (Carrier)
-AT+SAPBR=3,1,"CONTYPE","GPRS"   //тип подключения - GPRS
-AT+SAPBR=3,1,"APN","internet.beeline.ru" //APN, для Билайна - internet
-AT+HTTPINIT    //Инициализировать HTTP 
-AT+HTTPPARA="CID",1    //Carrier ID для использования.
-AT+HTTPPARA="URL","http:/????????.ru/gps_tracker/gps_tracker1.php?id_avto=?N&lat=XXXXXlon=YYYYY"    //Собственно URL, после sprintf с координатами
-AT+HTTPACTION=0    //Запросить данные методом GET
-AT+HTTPREAD   //дождаться ответа
-AT+HTTPTERM    //остановить HTTP
-
-*/
-
-/*
 
 http://cxem.net/arduino/arduino170.php
 http://arduino.ua/ru/guide/ArduinoGSMShield
 
 */
-#include "compat.h"
-#include <SingleSerial.h>
-#include <AltSoftSerial.h>
-
-extern SingleSerial serial;
 
 // printf without float
 #define SKIP_FLOAT
+
+#define RX_BUFFER_SIZE 64 // AltSoftSerial buffer
+//#define SERIAL_TX_BUFFER_SIZE 4 //SingleSerial buffer
+
+#include "compat.h"
+#include <SingleSerial.h>
+#include <AltSoftSerial.h>
+#include <avr/power.h>
+
+extern SingleSerial serial;
+
 
 
 
@@ -52,8 +44,26 @@ extern void delay_1();
 
 char GSM::response[RESPONCE_LENGTH];
 
+static const char PROGMEM s_cpin_q[]="+CPIN?";
+static const char PROGMEM s_creg_q[]="+CREG?";
+static const char PROGMEM s_cpin_a[]="CPIN: READY";
+static const char PROGMEM s_creg_a[]="CREG: 0,1";
+
+static const char PROGMEM s_ok[]="OK";
+
 GSM::GSM(){
 
+}
+
+
+byte GSM::_available(){
+    return gsm.available();
+}
+byte GSM::_read(void){
+    return gsm.read();
+}
+byte GSM::_write(uint8_t c){
+    return gsm.write(c);
 }
 
 void delay_1000(){
@@ -61,20 +71,22 @@ void delay_1000(){
 }
 
 bool  GSM::begin(){
+    power_timer1_enable();
     AltSoftSerial::begin(GSM_SPEED);
+
     digitalWrite(GSM_EN,LOW);
     delay_300();
     digitalWrite(GSM_EN,HIGH);
     delay_1000();
 
     for(byte i=15;i!=0; i--)
-	if(GSM::command(PSTR(""), PSTR("OK"), 1000) ) break;
+	if(GSM::command(PSTR(""), 1000) ) break;
 
             GSM::command(PSTR("E0")); // ECHO off
-            GSM::command(PSTR("+CNETLIGHT=0")); // LED off
+//            GSM::command(PSTR("+CNETLIGHT=0")); // LED off
             /*GSM::command(PSTR("+GSMBUSY=1")) && */ // not receive VOICE calls
-    return  GSM::command(PSTR("+CPIN?"),PSTR("CPIN: READY")) && // SIM ok?
-	    GSM::command(PSTR("+CREG?"),PSTR("CREG: 0,1")) &&   // NET registered?
+    return  GSM::command(s_cpin_q,s_cpin_a) && // SIM ok?
+	    GSM::command(s_creg_q,s_creg_a) &&   // NET registered?
 	    GSM::command(PSTR("+CCALR?"),PSTR("CCALR: 1"));   // CALL enabled?
 }
 
@@ -84,6 +96,8 @@ void GSM::end() {
     GSM::command(PSTR("+CPOWD=1"),PSTR("DOWN")); //power down
 
     AltSoftSerial::end();
+
+    power_timer1_disable();
 }
 
 
@@ -113,8 +127,8 @@ bool GSM::set_sleep(byte mode){
 	digitalWrite(GSM_DTR,HIGH);
 
 	return GSM::command(PSTR("+CFUN=1")) && // work
-	       GSM::command(PSTR("+CPIN?"),PSTR("CPIN: READY")) && // SIM ok?
-	       GSM::command(PSTR("+CREG?"),PSTR("CREG: 0,1"));   // NET registered?
+	       GSM::command(s_cpin_q,s_cpin_a) && // SIM ok?
+	       GSM::command(s_creg_q,s_creg_a);   // NET registered?
     }
 
 }
@@ -123,11 +137,11 @@ bool GSM::set_sleep(byte mode){
 
 void GSM::readOut() {
     char c;
-    if( gsm.available()) {
-serial.print_P(PSTR("< "));
-	while( gsm.available()) {
-	    c=gsm.read();    // Clean the input buffer from last answer and unsolicit answers
-	    serial.print(c);
+    if( gsm._available()) {
+//serial.print_P(PSTR("< "));
+	while( gsm._available()) {
+	    c=gsm._read();    // Clean the input buffer from last answer and unsolicit answers
+//serial.print(c);
 	    delay_10();
 	}
     }
@@ -136,17 +150,17 @@ serial.print_P(PSTR("< "));
 
 
 // отправка AT-команд
-// usage  command("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"", "OK", 2000);
+// usage  command(PSTR("+SAPBR=3,1,\"CONTYPE\",\"GPRS\""), [PSTR("OK")], [10000]);
 uint8_t GSM::command(const char* cmd, const char* answer, uint16_t time){
     readOut();
 
-serial.print_P(PSTR("> "));
-serial.print_P(cmd);
+//serial.print_P(PSTR("> "));
+//serial.print_P(cmd);
 
     gsm.print_P(PSTR("AT"));    // Send the AT command 
     gsm.println_P(cmd);    // Send the command 
 
-    return wait_answer(answer, time); // 10 sec
+    return wait_answer(answer, time)==1; // 10 sec
 }
 
 uint8_t GSM::command(const char* cmd, const char* answer){
@@ -154,7 +168,11 @@ uint8_t GSM::command(const char* cmd, const char* answer){
 }
 
 uint8_t GSM::command(const char* cmd){
-    return GSM::command(cmd, PSTR("OK"));
+    return GSM::command(cmd, s_ok);
+}
+
+uint8_t GSM::command(const char* cmd, uint16_t time){
+    return GSM::command(cmd, s_ok, time);
 }
 
 char * result_ptr, * result2_ptr;
@@ -162,45 +180,49 @@ char * result_ptr, * result2_ptr;
 uint8_t GSM::wait_answer(const char* answer, const char* answer2, unsigned int timeout){
     char * cp = response;
     unsigned long deadtime = millis() + timeout;
-    uint8_t has_answer=0;
-    char c;
+    char has_answer=0;
 
     delay_100();
 
     // this loop waits for the answer
     do{
-        if(gsm.available()) {    // if there are data in the UART input buffer, reads it and checks for the asnwer
-            *cp++ = c = gsm.read();
+        if(gsm._available()) {    // if there are data in the UART input buffer, reads it and checks for the asnwer
+            char c;
+            *cp++ = c = gsm._read();
             *cp=0;
-serial.print(c);
+//serial.print(c);
 
 	    if(!has_answer) { // пока нет ответа - проверяем
                 // check if the desired answer  is in the response of the module
                 if((result_ptr=strstr_P(response, answer)) != NULL)  { // окончательный ответ
                     has_answer = 1;
-serial.println_P(PSTR("="));
-		    delay_10();
+                } else
+                if((result_ptr=strstr_P(response, PSTR("ERROR"))) != NULL)  { // окончательная ошибка
+                    has_answer = 3;
+                }
+                if(has_answer){ // ответ только что получен
+//serial.println_P(PSTR("="));
 		    do {
-			while(gsm.available()) {    // if there are data in the UART input buffer, reads it and checks for the asnwer
-        		    *cp++ = c = gsm.read();
+			while(gsm._available()) {    // if there are data in the UART input buffer, reads it and checks for the asnwer
+        		    *cp++ = c = gsm._read();
         		    *cp=0;
-serial.print(c);	}
-			delay_1();
-		    } while(gsm.available());
-        		
+//serial.print(c);
+			}
+			delay_10();
+		    } while(gsm._available());
 		}
             }
             // TODO: контролировать разбиение на строки
-        } else if(has_answer)
+        } else if(has_answer) // если данные кончились и ответ получен - готово
     	    break;
     } while( millis() < deadtime ); // Waits for the asnwer with time out
 
     if( answer2 !=NULL) {
 	result2_ptr=strstr_P(response, answer2); // промежуточный ответ
-serial.println(result2_ptr);
+//serial.println(result2_ptr);
     }
     
-serial.println(" done");
+//serial.println(" done");
 
     return has_answer;
 }
@@ -225,10 +247,12 @@ bool GSM::sendSMS(const char * phone, const char * text) {
   gsm.print(text);
   gsm.println('\x1a');
 
-  bool ok=wait_answer(PSTR("OK"),PSTR("+CMGS:"),30000);
+  bool ok = wait_answer(s_ok,PSTR("+CMGS:"),30000) == 1;
 
   return ok && result2_ptr!=NULL;
 }
+
+static const char PROGMEM patt_minus[] = "\x1c\x38\x3d\x43\x41\x3a"; //1c 38 3d 43 41 3a - Минус в UTF без старшего байта
 
 
 bool GSM::sendUSSD(uint16_t text) {
@@ -253,6 +277,7 @@ bool GSM::sendUSSD(uint16_t text) {
   uint16_t num=0;
   //  0, "002D0037002E003000320440002E003004310430043B002E041D04300431043504400438044204350020002A00310030003600230020041E0431043504490430043D043D044B04390020043F043B0430044204350436002E00200418043D0444043E00200030003000300036", 72
   char *bp;
+  byte pp = 0;
   
   bp = (char *)buf;
   for(char *cp = result_ptr + sizeof(patt);;){
@@ -282,8 +307,17 @@ bool GSM::sendUSSD(uint16_t text) {
 // 1c 38 3d 43 41 3a - Минус в UTF без старшего байта
 
 	    cnt=0;
-	    if(num<0x100){	// skip all unicode
-		*bp++=(byte)num;
+	    c= (byte)num;
+	    if(c == patt_minus[pp]) {
+		pp++;
+	    } else if(pp==sizeof(patt_minus)-1) { // при совпадении запишем минус
+		*bp++='-';
+		*bp=0;
+	    } else 
+		pp=0; // reset on difference
+	
+	    if(num<0x100){  // skip all unicode
+		*bp++=c;
 		*bp=0;
 	    }
 	    num=0;
@@ -299,7 +333,7 @@ bool GSM::sendUSSD(uint16_t text) {
 
 
 int GSM::balance(){
-    if(!sendUSSD(100)) {
+    if(!GSM::sendUSSD(100)) {
 	return 0; //
     }
     
@@ -310,13 +344,12 @@ int GSM::balance(){
     bool fNeg=false;
     char *ptr=(char *)buf;
     
-    static const char PROGMEM patt[] = "\x1c\x38\x3d\x43\x41\x3a"; //1c 38 3d 43 41 3a - Минус в UTF без старшего байта
-    
-    if(strncmp_P((char *)buf,patt,sizeof(patt)-1) == 0) {
+/*    if(strncmp_P((char *)buf,patt,sizeof(patt)-1) == 0) {
 //serial.print_P(PSTR("minus"));
 	fNeg=true;
 	ptr += sizeof(patt)-1;
     }
+*/
     for(*cp=0;;){
 	char c=*ptr++;
 	if(!c) break;
@@ -335,6 +368,7 @@ int GSM::balance(){
 //serial.println(data);
 
     if(!strlen(data)) return 0;
+
     int v=(int) atol(data);
     if(fNeg) {
 	if(v==0) v=-1;
@@ -351,37 +385,31 @@ int GSM::balance(){
 void gprs_init() {  //Процедура начальной инициализации GSM модуля
  
  //Установка настроек подключения
-     gsm.print_P("AT+SAPBR=1,1");     //             Открыть несущую (Carrier)
-     gsm.print_P("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\""); //тип подключения - GPRS  
-     delay(500 * 6);
-     gsm.printf_P ("AT+SAPBR=3,1,\"APN\",\"%S\"",APN);
-     delay(500 * 1);
-     gsm.print_P("AT+SAPBR=3,1,\"USER\",\"user\"\r\n");
-     delay(500 * 1);
-     gsm.print_P("AT+SAPBR=3,1,\"PWD\",\"pass\"\r\n");
-     delay(500 * 1);
-     gsm.print_P("AT+SAPBR=1,1\r\n");  // Устанавливаем GPRS соединение
-     delay(500 * 3);
-     gsm.print_P("AT+HTTPINIT\r\n");  //  Инициализация http сервиса
-     delay(500 * 3);
-     gsm.print_P("AT+HTTPPARA=\"CID\",1\r\n");  //Установка CID параметра для http сессии
-
-     gsm.print_P("AT+HTTPPARA=\"URL\",\"http:/????????.ru/gps_tracker/gps_tracker1.php?id_avto=?N&lat=XXXXXlon=YYYYY\"");    //Собственно URL, после sprintf с координатами
-     gsm.print_P("AT+HTTPACTION=0");    //Запросить данные методом GET
-     gsm.print_P("AT+HTTPREAD");   //дождаться ответа
-     gsm.print_P("AT+HTTPTERM");    //остановить HTTP
+     gsm.command("AT+SAPBR=1,1");     //             Открыть несущую (Carrier)
+     gsm.command("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\""); //тип подключения - GPRS  
+     gsm.command("AT+SAPBR=3,1,\"APN\",\"%S\"",APN);
+     gsm.command("AT+SAPBR=3,1,\"USER\",\"user\"\r\n");
+     gsm.command("AT+SAPBR=3,1,\"PWD\",\"pass\"\r\n");
+     gsm.command("AT+SAPBR=1,1\r\n");  // Устанавливаем GPRS соединение
+     gsm.command("AT+HTTPINIT\r\n");  //  Инициализация http сервиса
+     gsm.command("AT+HTTPPARA=\"CID\",1\r\n");  //Установка CID параметра для http сессии
+     gsm.command("AT+HTTPPARA=\"URL\",\"http:/????????.ru/gps_tracker/gps_tracker1.php?id_avto=?N&lat=XXXXXlon=YYYYY\"");    //Собственно URL, после sprintf с координатами
+     gsm.command("AT+HTTPACTION=0");    //Запросить данные методом GET
+     gsm.command("AT+HTTPREAD");   //дождаться ответа
+     gsm.command("AT+HTTPTERM");    //остановить HTTP
 
 }
-
-// надо бы ограничиться одной строкой
-void ReadGSM(char *p) {  //функция чтения данных от GSM модуля
-    byte c;
-    while (gsm.available()) {
-        c = gsm.read();
-        *p++ = c;
-        *p=0;
-        delay(10);
-    }
-}
-
 #endif
+
+/*
+Для получения страницы по определенному URL нужно послать следующие команды:
+AT+SAPBR=1,1    //Открыть несущую (Carrier)
+AT+SAPBR=3,1,"CONTYPE","GPRS"   //тип подключения - GPRS
+AT+SAPBR=3,1,"APN","internet.beeline.ru" //APN, для Билайна - internet
+AT+HTTPINIT    //Инициализировать HTTP 
+AT+HTTPPARA="CID",1    //Carrier ID для использования.
+AT+HTTPPARA="URL","http:/????????.ru/gps_tracker/gps_tracker1.php?id_avto=?N&lat=XXXXXlon=YYYYY"    //Собственно URL, после sprintf с координатами
+AT+HTTPACTION=0    //Запросить данные методом GET
+AT+HTTPREAD   //дождаться ответа
+AT+HTTPTERM    //остановить HTTP
+*/

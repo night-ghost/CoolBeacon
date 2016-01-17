@@ -64,7 +64,10 @@
                 decoding only, of which this is based on.
 */ 
 
-#include "MorseEnDecoder.h"
+#if USE_MORZE
+
+#include "morseEnDecoder.h"
+#include <avr/power.h>
 
 
 // Morse code binary tree table (dichotomic search table)
@@ -72,27 +75,31 @@
 // ITU with most punctuation (but without non-english characters - for now)
 
 #define morseTreeLevels  6 // Minus top level, also the max nr. of morse signals
-const int morseTableLength = pow(2,morseTreeLevels+1);
-char morseTable[] PROGMEM = 
+#define morseTableLength  (1<<(morseTreeLevels+1))
+
+const char morseTable[] PROGMEM = 
   " ETIANMSURWDKGOHVF*L*PJBXCYZQ!*54*3***2&*+****16=/***(*7***8*90*"
   "***********?_****\"**.****@***'**-********;!*)*****,****:*******\0";
 
 
 
 
-static byte morseEncoder::morseSignals;       // nr of morse signals to send in one morse character
-static char morseEncoder::morseSignalString[7];// Morse signal for one character as temporary ASCII string of dots and dashes
+char morseEncoder::morseSignalString[7];// Morse signal for one character as temporary ASCII string of dots and dashes
 char *morseEncoder::strPtr;
 
 //  private:
-static char morseEncoder::encodeMorseChar;   // ASCII character to encode
-static boolean morseEncoder::sendingMorse;
+byte morseEncoder::encodeMorseChar;   // ASCII character to encode
+boolean morseEncoder::sendingMorse;
 
 //    static int morseSignalPos;
 byte morseEncoder::sendingMorseSignalNr;
-long morseEncoder::sendMorseTimer;
-long morseEncoder::lastDebounceTime;
+uint32_t morseEncoder::sendMorseTimer;
 
+void doSignals();
+void RFM_off(void);
+void RFM_set_TX();
+byte one_listen();
+void waitForCall(byte t);
 
 morseEncoder::morseEncoder()
 {
@@ -120,14 +127,14 @@ void morseEncoder::write(char *cp) {
     }
 }
 
-extern volatile byte fInt, voicePWM; // флаг прерывания и новое значение ШИМ
 extern volatile byte inc;            // инкремент таймера 0 для обеспечения нужной задержки
 extern volatile bool fTone,fHalf;    // тон а не речь - меняем значение ШИМ самостоятельно, отсчитывая полупериоды
 
 volatile uint32_t periods;
 
+volatile bool fListen;
 
-// near 1ms
+// near 1ms - 1024 uS
 ISR(TIMER0_COMPB_vect) {
     periods++;
 
@@ -138,12 +145,17 @@ ISR(TIMER0_COMPB_vect) {
 void doSignals() {
     uint32_t currentTime = periods;
 
-    char& currSignalType = morseSignalString[sendingMorseSignalNr-1];
+    if (morseEncoder::sendingMorseSignalNr == 0 ) return; // character done
 
-    bool endOfChar = sendingMorseSignalNr <= 1;
+    uint32_t diff = currentTime - morseEncoder::sendMorseTimer;
+
+    char& currSignalType = morseEncoder::morseSignalString[morseEncoder::sendingMorseSignalNr-1];
+
+    bool endOfChar = morseEncoder::sendingMorseSignalNr <= 1;
+    
     switch (currSignalType)  {
       case '.': // Send a dot (actually, stop sending a signal after a "dot time")
-        if (currentTime - sendMorseTimer >= dotTime) {
+        if (diff >= DOT_TIME) {
     	    goto off;
 //          fTone=false; // signal(false);
 //          sendMorseTimer = currentTime;
@@ -152,40 +164,68 @@ void doSignals() {
         break;
         
       case '-': // Send a dash (same here, stop sending after a dash worth of time)
-        if (currentTime - sendMorseTimer >= dashTime)    {
+        if (diff >= DASH_TIME)    {
 off:      fTone=false; //signal(false);		//@@@
-          sendMorseTimer = currentTime;
+	  fListen=true;
           currSignalType = 'x'; // Mark the signal as sent
+          goto res; //morseEncoder::sendMorseTimer = currentTime;
         }
         break;
 
       case 'x': // To make sure there is a pause between signals
-        if (sendingMorseSignalNr > 1)    {
-          // Pause between signals in the same letter
-          if (currentTime - sendMorseTimer >= dotTime)   {
-            signal(true); // Start sending the next signal //@@@
+        if (!endOfChar)    {   // Pause between signals in the same letter
+          if (diff >= DOT_TIME)   {
+            fTone=true; //signal(true); // Start sending the next signal //@@@
+	    fListen=false;
             goto next;
           }
-        } else {
-          // Pause between letters
-          if (currentTime - sendMorseTimer >= dashTime)    {
-next:       sendingMorseSignalNr--;
-            sendMorseTimer = currentTime;       // reset the timer
+        } else {     // Pause between letters
+          if (diff >= DASH_TIME)    {
+next:       morseEncoder::sendingMorseSignalNr--;
+res:        morseEncoder::sendMorseTimer = currentTime;       // reset the timer
           }
         }
         break;
 
       case ' ': // Pause between words (minus pause between letters - already sent)
       default:  // Just in case its something else
-        if (currentTime - sendMorseTimer > wordSpace - dashTime) 
-	    sendingMorseSignalNr--;
+        if (diff > WORD_SPACE - DASH_TIME)
+	    morseEncoder::sendingMorseSignalNr--;
     }
-    if (sendingMorseSignalNr == 0 ) {
-        sendingMorse = false; // char finished
-        // Ready to encode more letters
-        encodeMorseChar = '\0';
+}
 
-	if(strPtr){ // we sending string
+void morseEncoder::encode() {
+
+    if(sendingMorse){
+	if(fListen) {	// один раз  после каждой посылки
+	    waitForCall(0);
+	    fListen=false;
+	    RFM_set_TX();
+	    if(Got_RSSI) goto stop;
+	}
+    
+	if (sendingMorseSignalNr == 0 ) { // character done
+stop:
+	    encodeMorseChar = '\0';
+
+	    if(strPtr) {
+	        goto prepare; // есть продолжение
+	    } else  { // nothing to send
+                morseEncoder::sendingMorse = false; // char finished
+		RFM_off();
+
+                //HW deinit
+                TIMSK0 &= ~(1 << OCIE0B); // запретим compare interrupt
+	        TIMSK2 = 0;
+	        TCCR2A = 0;
+	        TCCR2B = 0;
+	        power_timer2_disable();
+	    }
+	} 
+    } else { // not sending
+
+prepare:
+	if(!encodeMorseChar && strPtr){ // we sending string
 	    char c;
 	    while(true) {
 		c=*strPtr++;
@@ -198,86 +238,75 @@ next:       sendingMorseSignalNr--;
 	        break;
 	    }
         }
-
-        //HW deinit
-        TIMSK0 &= ~(1 << OCIE0B); // запретим compare interrupt
-	TIMSK2 = 0;
-	TCCR2A = 0;
-	TCCR2B = 0;
-	power_timer2_disable();
-    }
-}
-
-void morseEncoder::encode() {
-
-  if (!sendingMorse && encodeMorseChar) {
-    // change to capital letter if not
-    if (encodeMorseChar > 96) encodeMorseChar -= 32;
+	if(encodeMorseChar) {
+	    // change to capital letter if not
+	    if (encodeMorseChar > 96) encodeMorseChar -= 32;
   
-    // Scan for the character to send in the Morse table
-    byte p;
-    for (p=0; p<morseTableLength+1; p++) 
-	if (pgm_read_byte_near(morseTable + p) == encodeMorseChar) 
-	    break;
-
-    if (p >= morseTableLength) p = 0; // not found, but send a space instead
+	    // Scan for the character to send in the Morse table
+	    byte p;
+	    for (p=0; p<morseTableLength+1; p++) 
+		if (pgm_read_byte_near(morseTable + p) == encodeMorseChar) 
+		    break;
 
 
-    // Reverse binary tree path tracing
-    int pNode; // parent node
-    morseSignals = 0;
-
-    // Travel the reverse path from position p to the top of the morse table
-    if (p > 0)  {
-      // build the morse signal (backwards morse signal string from last signal to first)
-      pNode = p;
-      while (pNode > 0)   {
-        if ( (pNode & 0x0001) == 1) {
-          // It is a dot
-          morseSignalString[morseSignals++] = '.';
-        } else {
-          // It is a dash
-          morseSignalString[morseSignals++] = '-';
-        }
-        // Find parent node
-        pNode = int((pNode-1)/2);
-      }
-    } else { // Top of Morse tree - Add the top space character
-      // cheating a little; a wordspace for a "morse signal"
-      morseSignalString[morseSignals++] = ' ';
-    }
-    
-    morseSignalString[morseSignals] = '\0';
+	    if (p >= morseTableLength) p = 0; // not found, but send a space instead
 
 
-    // start sending the the character
-    sendingMorse = true;
-    sendingMorseSignalNr = morseSignals; // Sending signal string backwards
-    sendMorseTimer = periods; // millis();
+	    // Reverse binary tree path tracing
+	    int pNode; // parent node
+	    
+	    char *cp = morseSignalString; //byte morseSignals = 0;
 
-    if (morseSignalString[0] != ' ') // start tone
-	fTone=true; // signal(true); 
+	    // Travel the reverse path from position p to the top of the morse table
+	    if (p > 0)  {
+	        // build the morse signal (backwards morse signal string from last signal to first)
+	        pNode = p;
+	        while (pNode > 0)   {
+	            //morseSignalString[morseSignals++] = pNode & 0x0001? '.' : '-';
+	            *cp++ = pNode & 0x0001? '.' : '-';
+	            // Find parent node
+	            pNode = int((pNode-1)/2);
+	        }
+	    } else { // Top of Morse tree - Add the top space character
+	        // cheating a little; a wordspace for a "morse signal"
+	        //morseSignalString[morseSignals++] = ' ';
+	        *cp++ = ' ';
+	    }
 
-    // init HW
-    power_timer2_enable();
+	    *cp = '\0'; // close string
 
-    inc = 180/4; // 2777 Hz
+	    // start sending the the character
+//	    sendingMorseSignalNr = morseSignals; // Sending signal string backwards
+	    sendingMorseSignalNr = cp - morseSignalString; // Sending signal string backwards
+	    sendMorseTimer = periods; // millis();
+
+	    if (morseSignalString[0] != ' ') // start tone
+		fTone=true; // signal(true); 
+
+	    if(!sendingMorse){ // если передача выключена
+		sendingMorse = true;
+	        // init HW
+	        power_timer2_enable();
+
+	        inc = 180/4; // 2777 Hz
 
 // ШИМ частотой 16MHz / 256 = 62.5KHz (период 16мкс), значит одно значение ШИМ звучит 155/16 ~= 10 периодов
-    TIMSK2 = (1 << OCIE2A) | (1 << TOIE2);  // Int T2 Overflow + Compare enabled
-    TCCR2A = (1<<WGM21) | (1<<WGM20);         // Fast PWM.
-    TCCR2B = (1<<CS20);                     // CLK/1 и режим Fast PWM
-    OCR2A=0x0; // начальное значение компаратора
+	        TIMSK2 = (1 << OCIE2A) | (1 << TOIE2);  // Int T2 Overflow + Compare enabled
+	        TCCR2A = (1<<WGM21) | (1<<WGM20);         // Fast PWM.
+	        TCCR2B = (1<<CS20);                     // CLK/1 и режим Fast PWM
+//	        OCR2A=0x0; // начальное значение компаратора
 
-    OCR0B = TCNT0;   // отложим прерывание на нужное время
-    TIFR0  |=  1<<OCF0B;   // clear flag
-    TIMSK0 |= (1<<OCIE0B); // разрешим compare  interrupt
-  } // new char
+//	        OCR0B = TCNT0;   // отложим прерывание на нужное время
+	        TIFR0  |=  1<<OCF0B;   // clear flag
+	        TIMSK0 |= (1<<OCIE0B); // разрешим compare  interrupt
 
+		RFM_set_TX();
+	    }
+	} // new char
+    } // sendingMorse
 
-  // Send Morse signals to output
-  if (sendingMorse) {
-	doSignals();
-  }
 }
 
+
+
+#endif // USE_MORZE

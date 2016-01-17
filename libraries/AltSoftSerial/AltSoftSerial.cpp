@@ -46,7 +46,6 @@ static uint16_t rx_target;
 static uint16_t rx_stop_ticks=0;
 static volatile uint8_t rx_buffer_head;
 static volatile uint8_t rx_buffer_tail;
-#define RX_BUFFER_SIZE 128
 static volatile uint8_t rx_buffer[RX_BUFFER_SIZE];
 
 static volatile uint8_t tx_state=0;
@@ -54,7 +53,6 @@ static uint8_t tx_byte;
 static uint8_t tx_bit;
 static volatile uint8_t tx_buffer_head;
 static volatile uint8_t tx_buffer_tail;
-#define TX_BUFFER_SIZE 16
 static volatile uint8_t tx_buffer[TX_BUFFER_SIZE];
 
 
@@ -104,8 +102,8 @@ size_t AltSoftSerial::write(uint8_t b)
 {
 	uint8_t intr_state, head;
 
-	head = tx_buffer_head + 1;
-	if (head >= TX_BUFFER_SIZE) head = 0;
+	head = (tx_buffer_head + 1) & (TX_BUFFER_SIZE - 1);
+	//if (head >= TX_BUFFER_SIZE) head = 0;
 	while (tx_buffer_tail == head) ; // wait until space in buffer
 	intr_state = SREG;
 	cli();
@@ -168,7 +166,7 @@ ISR(COMPARE_A_INTERRUPT)
 			DISABLE_INT_COMPARE_A();
 		}
 	} else {
-		if (++tail >= TX_BUFFER_SIZE) tail = 0;
+		tail = (tail+1)&(TX_BUFFER_SIZE-1); //if (++tail >= TX_BUFFER_SIZE) tail = 0;
 		tx_buffer_tail = tail;
 		tx_byte = tx_buffer[tail];
 		tx_bit = 0;
@@ -226,12 +224,12 @@ ISR(CAPTURE_INTERRUPT)
 			state++;
 			if (state >= 9) {
 				DISABLE_INT_COMPARE_B();
-				head = rx_buffer_head + 1;
-				if (head >= RX_BUFFER_SIZE) head = 0;
+				head = (rx_buffer_head + 1) & (RX_BUFFER_SIZE - 1);
+				//if (head >= RX_BUFFER_SIZE) head = 0;
 				if (head != rx_buffer_tail) {
 					rx_buffer[head] = rx_byte;
 					rx_buffer_head = head;
-				}
+				} // else overflow
 				CONFIG_CAPTURE_FALLING_EDGE();
 				rx_bit = 0;
 				rx_state = 0;
@@ -256,12 +254,12 @@ ISR(COMPARE_B_INTERRUPT)
 		rx_byte = (rx_byte >> 1) | bit;
 		state++;
 	}
-	head = rx_buffer_head + 1;
-	if (head >= RX_BUFFER_SIZE) head = 0;
+	head = (rx_buffer_head + 1) & (RX_BUFFER_SIZE - 1);
+//	if (head >= RX_BUFFER_SIZE) head = 0;
 	if (head != rx_buffer_tail) {
 		rx_buffer[head] = rx_byte;
 		rx_buffer_head = head;
-	}
+	} // else overflow
 	rx_state = 0;
 	CONFIG_CAPTURE_FALLING_EDGE();
 	rx_bit = 0;
@@ -275,7 +273,8 @@ uint8_t AltSoftSerial::read(void)
 
 	tail = rx_buffer_tail;
 	if (rx_buffer_head == tail) return 0;
-	if (++tail >= RX_BUFFER_SIZE) tail = 0;
+	
+	tail = (tail+1) & (RX_BUFFER_SIZE-1); //if (++tail >= RX_BUFFER_SIZE) tail = 0;
 	out = rx_buffer[tail];
 	rx_buffer_tail = tail;
 	return out;
@@ -287,7 +286,7 @@ uint8_t AltSoftSerial::peek(void)
 
 	tail = rx_buffer_tail;
 	if (rx_buffer_head == tail) return 0;
-	if (++tail >= RX_BUFFER_SIZE) tail = 0;
+	tail = (tail+1) & (RX_BUFFER_SIZE-1); //if (++tail >= RX_BUFFER_SIZE) tail = 0;
 	return rx_buffer[tail];
 }
 

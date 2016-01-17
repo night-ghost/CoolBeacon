@@ -28,6 +28,9 @@ class GSM: public AltSoftSerial
 //    using AltSoftSerial::read;
 //    using AltSoftSerial::available;
 //    using AltSoftSerial::flush;
+    static byte _available();
+    static byte _read(void);
+    static byte _write(uint8_t c);
 
     static void initGSM(void);
     static void readOut();
@@ -36,10 +39,11 @@ class GSM: public AltSoftSerial
     static uint8_t wait_answer(const char* answer, unsigned int timeout);
     static uint8_t command(const char* cmd, const char* answer, uint16_t time);
     static uint8_t command(const char* cmd, const char* answer);
+    static uint8_t command(const char* cmd, uint16_t time);
     static uint8_t command(const char* cmd);
     static bool sendSMS(const char * phone, const char * text);
     static bool sendUSSD(uint16_t text);
-    int balance();
+    static int balance();
 //  private:
     static char response[RESPONCE_LENGTH];
 };

@@ -14,10 +14,6 @@
   It also encodes Morse code sent via the serial interface to the Arduino,
     on digital output pin 13. Speed is 13 WPM also (easily changed in code).
   
-  It can also decode audible signals, if using the constant MORSE_AUDIO
-    instead of MORSE_KEYER, but then it is important to note that the
-    input pin nr. will be for ANALOG inputs (0-5 on Atmega 168 - 328),
-    and not the digital inputs.
 
 
 
@@ -47,11 +43,9 @@
 #include <MorseEnDecoder.h>
 
 // Pin mappings
-const byte morseInPin = 7;      
-const byte morseOutPin = 13;
+#define morseOutPin  13
 
 // Instantiate Morse objects
-morseDecoder morseInput(morseInPin, MORSE_KEYER, MORSE_ACTIVE_LOW);
 morseEncoder morseOutput(morseOutPin);
 
 // Variables dealing with formatting the output somewhat

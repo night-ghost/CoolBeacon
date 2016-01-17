@@ -32,22 +32,24 @@
 // Корректировка таймера. Если спешит или отстает, то ставим в ноль, DEADTIME минут на 10 и засекаем время до первой посылки..
 // Считаем разницу в процентах и выставляем корректировку ( 1000 / (процент погрешности) )
 // Плюс, если спешит. Минус, если отстает.
-#define TIMER_CORRECTION +54
+#define TIMER_CORRECTION 18
 
 // Порог напряжения батарии, ниже которого батарея считается разряженной (мВ)
 #define VCC_LOW_THRESHOLD 3250
 
 
 // номера ног вспышки и пищалки. Можно и без них (через конфигуратор), но при прямом указании лучше :)
+//#define FLASH_PIN 5  // 
 #define FLASH_PIN 12 // PB3
 #define BUZZER_PIN 11 // PB4
+//#define BUZZER_PIN2 12 // PB3
 
 #define BUZZER_PIN_PORT (PORTB) // порт и битовая маска ноги пищалки, значительно улучшает обработку прерывания (хотя можно и без них)
 #define BUZZER_PIN_BIT (_BV(PB4))
 
 // эти ноги выведены на разъем приемника
 #define VBAT_PIN 18 // A4 (PC5)  - Vext_bat (1К на землю, 20К на батарею)
-//#define VCC_PIN 18 // A4(PC5) - Vcc_bat - via magick mode
+#define VCC_PIN 18 // A4(PC5) - Vcc_bat - via magick mode
 #
 
 #define USE_GSM // используем или нет
@@ -61,7 +63,8 @@
 
 #define GSM_SPEED 38400// 9600 // 19200 //
 
-#define APN "internet.beeline.ru"
+
+#define USE_MORZE true
 
 
 
@@ -88,7 +91,7 @@ TCCR1A = (1<<WGM10);
 
 
 
-#if HARDWARE_TYPE == 0 // Orange LRS receiver
+#if HARDWARE_TYPE == 0 // Orange/HawkEye LRS receiver
   #define Red_LED A3
   #define Green_LED 13
 
