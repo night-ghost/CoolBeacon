@@ -77,7 +77,7 @@
 #define morseTreeLevels  6 // Minus top level, also the max nr. of morse signals
 #define morseTableLength  (1<<(morseTreeLevels+1))
 
-const char morseTable[] PROGMEM = 
+static const char morseTable[] PROGMEM = 
   " ETIANMSURWDKGOHVF*L*PJBXCYZQ!*54*3***2&*+****16=/***(*7***8*90*"
   "***********?_****\"**.****@***'**-********;!*)*****,****:*******\0";
 
@@ -211,13 +211,13 @@ stop:
 	    if(strPtr) {
 	        goto prepare; // есть продолжение
 	    } else  { // nothing to send
-                morseEncoder::sendingMorse = false; // char finished
+                morseEncoder::sendingMorse = false; // all finished
 		RFM_off();
 
                 //HW deinit
                 TIMSK0 &= ~(1 << OCIE0B); // запретим compare interrupt
 	        TIMSK2 = 0;
-	        TCCR2A = 0;
+	        //TCCR2A = 0; его можно не сбрасывать, таймер остановлен
 	        TCCR2B = 0;
 	        power_timer2_disable();
 	    }
@@ -225,15 +225,18 @@ stop:
     } else { // not sending
 
 prepare:
-	if(!encodeMorseChar && strPtr){ // we sending string
+	if(!encodeMorseChar){ // we sending string
 	    char c;
-	    while(true) {
+	    while(strPtr) {
 		c=*strPtr++;
-		if(!c){
+		if(!*strPtr){ // это последний символ
+		    strPtr=NULL;
+		}
+		if(!c){ // перестраховка
 		    strPtr=NULL;
 		    break;
 		}
-		if(c=='*') continue;
+		if(c=='*') continue; // звезды пропускаем
 	        encodeMorseChar = c;
 	        break;
 	    }
@@ -253,7 +256,7 @@ prepare:
 
 
 	    // Reverse binary tree path tracing
-	    int pNode; // parent node
+	    byte pNode; // parent node
 	    
 	    char *cp = morseSignalString; //byte morseSignals = 0;
 
@@ -288,14 +291,13 @@ prepare:
 	        // init HW
 	        power_timer2_enable();
 
-	        inc = 180/4; // 2777 Hz
+	        inc = 200/4; // 2500 Hz
 
-// ШИМ частотой 16MHz / 256 = 62.5KHz (период 16мкс), значит одно значение ШИМ звучит 155/16 ~= 10 периодов
+// ШИМ частотой 16MHz / 256 = 62.5KHz (период 16мкс)
 	        TIMSK2 = (1 << OCIE2A) | (1 << TOIE2);  // Int T2 Overflow + Compare enabled
 	        TCCR2A = (1<<WGM21) | (1<<WGM20);         // Fast PWM.
 	        TCCR2B = (1<<CS20);                     // CLK/1 и режим Fast PWM
 //	        OCR2A=0x0; // начальное значение компаратора
-
 //	        OCR0B = TCNT0;   // отложим прерывание на нужное время
 	        TIFR0  |=  1<<OCF0B;   // clear flag
 	        TIMSK0 |= (1<<OCIE0B); // разрешим compare  interrupt

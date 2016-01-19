@@ -116,7 +116,7 @@ inline void initBuzzer(){
 	buzzerPort = portOutputRegister(port);
  #endif
 
-	BUZZER_LOW; //digitalWrite(BUZZER_PIN, 0);
+	BUZZER_LOW; 
 
 #else
     BuzzerPin     = ((byte *)&p.WakeBuzzerParams)[1];
@@ -205,9 +205,11 @@ uint16_t readVCC() {
 */
     ADMUX = 0x4e; //AVCC with external capacitor at AREF pin, 1.1v as meashured
     delay_1();
-    
+
+#define VCC_AVG 100
+
     uint32_t sum=0;
-    for(byte i=100;i>0;i--){
+    for(byte i=VCC_AVG; i>0; i--){
         delay_1();
     
 	ADCSRA |= 1 << ADSC; // start conversion
@@ -218,14 +220,11 @@ uint16_t readVCC() {
 	byte high = ADCH;
     
 	uint16_t v = (high << 8) | low;
-    // return 11253*33/31 / v;
+    // return 11253 / v;
 	sum+=  v;
     }
-//    return (sum+32) / 64;
-//    return 120567610 / sum; // in mv, calibrated
-//    return 117337512 / sum; // in mv, calibrated
-//    return 120053551 / sum; // in mv, calibrated
-    return 118645531 / sum; // in mv, calibrated
+
+    return (118645531 * VCC_AVG / 100) / sum; // in mv, calibrated
     
 
 }
@@ -265,10 +264,10 @@ ISR(INT0_vect)
 ISR(INT1_vect)
 #endif
 {
-  byte reg=spiReadRegister(0x03);
+  byte reg=spiReadRegister(0x03); // bye-bye
   reg=spiReadRegister(0x04);
 
-  if(reg & 64) { 	// ipreainval
+  if(reg & 64) { 	// ipreaval
     preambleDetected = true;
     preambleRSSI = spiReadRegister(0x26);
   }
@@ -278,52 +277,85 @@ ISR(INT1_vect)
 BS bs;
 
 
+#define MULTIPLIER 10000000
+
 #if GPS_COORD_FMT == 1 
-void format_one(PGM_P f, long n){
+// 1 ГГ ММ СС.С
+
+void format_one(long n){
     if(n<0) {
 	bs.print('-');
 	n=-n;
     }
 
-    unsigned int DD = n/10000000; // grad 
-    unsigned int MM =   (n - DD*10000000) * 60 /10000000;
-    unsigned long SS = ((n - DD*10000000) * 60 - MM) * 60 /10000000;
-    bs.printf_P(f, DD, MM, (int)SS, (int)((SS - (unsigned long)SS)*10/10000000));
+    unsigned int DD = n/MULTIPLIER; // grad 
+    unsigned int MM =   (n - DD*MULTIPLIER) * 60 /MULTIPLIER;
+    unsigned long SS = ((n - DD*MULTIPLIER) * 60 - MM) * 60 /MULTIPLIER;
+    bs.printf_P(PSTR("%i %02i %02i.%1i"), DD, MM, (int)SS, (int)((SS - (unsigned long)SS)*10/MULTIPLIER));
 }
 
 #elif GPS_COORD_FMT == 2
-void format_one(PGM_P f, long n){
+ // 2 ГГ ММ.МММ
+
+void format_one(long n){
     if(n<0) {
 	bs.print('-');
 	n=-n;
     }
 
-    unsigned int DD = n/10000000; //grad
-    unsigned long  MM = (n - DD*10000000) * 60 /10000000;
+    unsigned int DD = n/MULTIPLIER; //grad
+    unsigned long  MM = (n - DD*MULTIPLIER) * 60 /MULTIPLIER;
 
-    bs.printf_P(f, DD, (int)MM, (int)((MM - (unsigned long)MM)*1000/10000000));
+    bs.printf_P(PSTR( "%i %02i.%03i"), DD, (int)MM, (int)((MM - (unsigned long)MM)*1000/MULTIPLIER));
 }
-#elif GPS_COORD_FMT == 3 || GPS_COORD_FMT == 4
-void format_one(PGM_P f, long n, long d){
+#elif GPS_COORD_FMT == 3
+      // 3 ГГ.ГГГГГ
+
+void format_one(long n){
 
     if(n<0) {
 	bs.print('-');
 	n=-n;
     }
-    unsigned int in=n/10000000;
-    unsigned long tail = n - in*10000000;
-    bs.printf_P(f, in, (unsigned long)(tail*d/10000000));
+    unsigned int in=n/MULTIPLIER;
+    unsigned long tail = n - in*MULTIPLIER;
+    bs.printf_P(PSTR( "%i.%05lu"), in, (unsigned long)(tail*100000/MULTIPLIER));
 }
-#elif GPS_COORD_FMT == 5 || GPS_COORD_FMT == 6
-void format_one(PGM_P f, long n){
+#elif GPS_COORD_FMT == 4
+      // 4 ГГ.ГГГГ 
+void format_one(long n){
 
     if(n<0) {
 	bs.print('-');
 	n=-n;
     }
-    unsigned int in=n/10000000;
-    unsigned long tail = n - in*10000000;
-    bs.printf_P(f, (unsigned long)(tail*d/10000000));
+    unsigned int in=n/MULTIPLIER;
+    unsigned long tail = n - in*MULTIPLIER;
+    bs.printf_P(PSTR( "%i.%04lu"), in, (unsigned long)(tail*10000/MULTIPLIER));
+}
+#elif GPS_COORD_FMT == 5
+      // 5 .ГГГГГ
+void format_one(long n){
+
+    if(n<0) {
+	bs.print('-');
+	n=-n;
+    }
+    unsigned int in=n/MULTIPLIER;
+    unsigned long tail = n - in*MULTIPLIER;
+    bs.printf_P(PSTR( "%05lu"), (unsigned long)(tail*100000/MULTIPLIER));
+}
+#elif GPS_COORD_FMT == 6
+      // 6 .ГГГГ
+void format_one(long n){
+
+    if(n<0) {
+	bs.print('-');
+	n=-n;
+    }
+    unsigned int in=n/MULTIPLIER;
+    unsigned long tail = n - in*MULTIPLIER;
+    bs.printf_P(PSTR( "%04lu"), (unsigned long)(tail*10000/MULTIPLIER));
 }
 #endif
 
@@ -333,42 +365,17 @@ void formatGPS_coords(){ // печатает координаты в буфер 
     BS::begin(messageBuff);
 
 //no use p.GPS_Format
-
-#if GPS_COORD_FMT == 1
-// 1 ГГ ММ СС.С
-        format_one(PSTR( "%02i*%02i*%02i*%1i", coord.lat);
-        format_one(PSTR("#%02i*%02i*%02i*%1i", coord.lon);
-#elif GPS_COORD_FMT == 2
- // 2 ГГ ММ.МММ
-        format_one(PSTR( "%02i*%02i*%03i", coord.lat);
-        format_one(PSTR("#%02i*%02i*%03i", coord.lon);
-#elif GPS_COORD_FMT == 3
-      // 3 ГГ.ГГГГГ
-	format_one(PSTR( "%i*%05lu"),coord.lat,100000L);
-        format_one(PSTR("#%i*%05lu"),coord.lon,100000L);
-#elif GPS_COORD_FMT == 4
-      // 4 ГГ.ГГГГ 
-
-	format_one(PSTR( "%i*%04lu"),coord.lat,10000L);
-        format_one(PSTR("#%i*%04lu"),coord.lon,10000L);
-#elif GPS_COORD_FMT == 5
-      // 5 .ГГГГГ
-
-	format_one(PSTR( "%05lu"),coord.lat,100000L);
-        format_one(PSTR("#%05lu"),coord.lon,100000L);
-
-#elif GPS_COORD_FMT == 6
-      // 6 .ГГГГ
-	format_one(PSTR( "%04lu"),coord.lat,10000L);
-        format_one(PSTR("#%04lu"),coord.lon,10000L);
-#endif
+    format_one(coord.lat);
+    bs.print('#');
+    format_one(coord.lon);
+    
+    if(lflags.wasCrash)     bs.print('*'); // если краш а не посадка то на конце будет длинный бип
 }
 
 // чтение и запись мелких объектов
 void eeprom_read_len(byte *p, uint16_t e, byte l){
     for(;l>0; l--, e++) {
 	*p++ = (byte)eeprom_read_byte( (byte *)e );
-//	DBG_PRINTVARLN(l);
     }
 }
 
@@ -400,11 +407,11 @@ bool is_eeprom_valid(){// родная реализация кривая, у н�
 
 void Read_EEPROM_Config(){ 
 
-#if 0 // MAX_PARAMS * 4 < 255
+#if 1 // MAX_PARAMS * 4 < 255
     eeprom_read_len((byte *)&p, EEPROM_PARAMS, sizeof(p));
 #else
-    register uint8_t *pp;
-    register uint16_t i, ee;
+    uint8_t *pp;
+    uint16_t i, ee;
 
 // eeprom_read_len недостаточно
     for(i=sizeof(p), pp=(byte *)&p,  ee=EEPROM_PARAMS;  i>0; i--,ee++) { // байта для адреса мало
@@ -415,10 +422,8 @@ void Read_EEPROM_Config(){
 }
 
 void write_Params_ram_to_EEPROM() { // записать зону параметров в EEPROM
-// TODO:    
-
-    register uint8_t *pp, *ee;
-    register uint16_t i;
+    uint8_t *pp, *ee;
+    uint16_t i;
     byte v;
 
     crc_init(&crc);
@@ -442,10 +447,10 @@ void printCoord(long& l){ // signed long!
 //	l=-l;
 //    }
 /*
-    unsigned int in = l / 10000000;
+    unsigned int in = l / MULTIPLIER;
     serial.print(in);
     serial.print('.');
-    serial.print( l - in * 10000000);
+    serial.print( l - in * MULTIPLIER);
 */
     serial.print( l );
 }
@@ -623,16 +628,15 @@ void println_SNS(const char *s1, unsigned long n, const char *s2) {
 }
 
 
-
-
 void deepSleep_450(){
     deepSleep(450);
 }
 
 
-void Beacon_and_Voice() {
-     sendBeacon();
-     
+//таймерный маяк - посылка и координаты
+inline void Beacon_and_Voice() {
+    sendBeacon();
+ 
     if( cycles_count % (byte)p.SearchGPS_time) {
 //	SendMorzeSign();
 	if(lflags.hasGPSdata){ // есть данные той или иной свежести
@@ -667,7 +671,7 @@ void  beepOnBuzzer(unsigned int length){
 	    digitalWrite(BUZZER_PIN, 0);
 #endif
 	    delayMicroseconds(BuzzerToneDly);
-	}    
+	}
 #else
     if(BuzzerPin){
 	for(;length>0;length--){
@@ -732,8 +736,7 @@ void listen_quant(){
 byte one_listen(){ // ожидание вызова 1 интервал, затем ожидание перехода абонента на прием
 
     listen_quant();
-//DBG_PRINTVARLN(tmpRSSI);
-    
+
     if(preambleDetected) {  // если услышали вызов то дождаться его завершения
 	byte RSSI= preambleRSSI;
 	
@@ -763,7 +766,7 @@ byte one_listen(){ // ожидание вызова 1 интервал, зате
 
 // ожидание вызова t периодов прослушивания
 void waitForCall(byte t){
-    while(true){	//for (byte i=t;i>0; i--){
+    while(true){
 	if((Got_RSSI = one_listen())) {
 	    lflags.callActive=true; // режим недавнего вызова
 	    callTime = uptime; // запомним время последнего вызова
@@ -781,10 +784,10 @@ void buzzer_SOS(){
 	    beepOnBuzzer_333();
 	else
 	    beepOnBuzzer(0x111);
-	    
+
 	waitForCall(0);
-	if(Got_RSSI) 
-	    return; // если во время писка услышали вызов - сразу выходим
+
+	if(Got_RSSI) return; // если во время писка услышали вызов - сразу выходим
     }
 }
 
@@ -974,19 +977,22 @@ unsigned long distance(Coord *p1, Coord *p2){
 
     unsigned long dstlat = labs(p1->lat - p2->lat) / 100;
     unsigned long dstlon = labs(p1->lon - p2->lon) / 100 /* * scaleLongDown */;
-//    return sqrt(sq(dstlat) + sq(dstlon)) * 111319.5 / 10000000.0; нам не нужно точное расстояние 
+//    return sqrt(sq(dstlat) + sq(dstlon)) * 111319.5 / MULTIPLIER; нам не нужно точное расстояние 
     return approx_distance(dstlat, dstlon);
 }
 
 
 #if defined(USE_GSM)
-void sendCoordsSms(){
+void sendCoordsSms(bool fChute){
     if(lflags.gsm_ok && ! lflags.smsSent)  { // только 1 раз
 	bs.begin((char *)buf);
-     //bs.printf_P(PSTR("ykoctpa.ru/map?markers=%s"),messageBuff);
-     //bs.printf_P(PSTR("maps.google.ru/maps?q=%s"),messageBuff);       // форматировать координвты под ссылку на карты гугля
-	bs.print_P(PSTR("maps.google.ru/maps?q="));       // форматировать координвты под ссылку на карты гугля
-	bs.print(messageBuff);
+
+	if(lflags.wasCrash) bs.println_P(PSTR("Crash!"));
+	if(fChute)          bs.println_P(PSTR("Chute!"));
+
+//	bs.print_P(PSTR("maps.google.ru/maps?q="));       // форматировать координвты под ссылку на карты гугля
+	bs.print_P(PSTR("ykoctpa.ru/map?q=")); 		// а тут короче и есть Яндекс
+	bs.println(messageBuff);
     
 	gsm.set_sleep(false); // leave sleep mode
 	bool fSent=false;
@@ -1007,6 +1013,10 @@ void sendCoordsSms(){
 	}
     }
 }
+void sendCoordsSms(){
+    sendCoordsSms(false);
+}
+
 #endif
 
 void doOnDisconnect() {// отработать потерю связи
@@ -1518,16 +1528,21 @@ DBG_PRINTLN("MAVLINK gone");
 	    if(GPS_data_fresh)
 		home_coord = coord;	// если данные не из памяти то сохранить в роли координат дома
 
+
+	    baro_alt_start = mav_baro_alt; // запомнить давление при старте
+	    control_loss_count=0;  // reset
 DBG_PRINTLN("Armed");
 
         }
 
 	if(lflags.crash){	// поступило сообщение "Crash: Disarming"
+DBG_PRINTLN("Crash");
 	    lflags.connected = false;     // соединения нет
+	    lflags.wasCrash=true;	// запомним
 	    lflags.crash=false;           // обработано
 	    doOnDisconnect();             // отработать окончательную потерю связи
 	}
-/*
+/* проверяется после каждого пакета
 	if(chuteTime<timeStart) { //проверка парашюта
 	    chute_check();
 	    chuteTime = timeStart + CHUTE_INTERVAL;
@@ -1535,7 +1550,7 @@ DBG_PRINTLN("Armed");
 */
     } else { // 		дизарм
 	if(lflags.motor_was_armed){	// моторы были заармлены 
-	    if( (uptime - armTime) < 60) // если меньше минуты то не считается
+	    if( (uptime - armTime) < 30) // если меньше полуминуты то не считается
 		lflags.motor_was_armed = false;
 	    else {	// дизарм после минуты арма
 		// если все хорошо, то ничего передавать не надо - маяк просто выключат через несколько минут или заармят снова

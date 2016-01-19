@@ -248,7 +248,7 @@ RAM:012E Требует индивидуальной процедуры подб
 /* 14 */    5,
 /* 15 */    0,
 /* 16 */    5,		// SearchGPS_time
-/* 17 */    1,		// boolWakeBeacon
+/* 17 */    0,		// boolWakeBeacon
 /* 18 */    1,		// boolWakeGPSvoice
 /* 19 */    0x6B1, 	// WakeBuzzerParams  старший байт - номер ноги, младший - тон
 /* 20 */    5,	  	// номер ноги вспышки
@@ -263,13 +263,13 @@ RAM:012E Требует индивидуальной процедуры подб
 /* 29 */    0,		// ExtVoltageWarn
 #define PARAMS_END 30
 /* 30 */    PHONE,
-#ifdef PHUNE1
+#ifdef PHONE1
 /* 34 */    PHONE1,
 #endif
-#ifdef PHUNE2
+#ifdef PHONE2
 /* 38 */    PHONE2,
 #endif
-#ifdef PHUNE3
+#ifdef PHONE3
 /* 42 */    PHONE3,
 #endif
 /* 46 *///    APN,
@@ -292,44 +292,6 @@ const StrParam strParam[] = {
 //    { p.apn, 24 },
 };
 
-/*
-const byte PROGMEM  ParamLength[] = {
-    sizeof(p.Frequency),
-    sizeof(p.FrequencyCorrection),
-    sizeof(p.DeadTimer),
-    sizeof(p.IntStart),
-    sizeof(p.IntLimit),
-    sizeof(p.SearchTime),
-    sizeof(p.Sleep),
-    sizeof(p.GPS_ErrorTresh),
-    sizeof(p.GPS_MonitInterval),
-    sizeof(p.GPS_MonDuration),
-    sizeof(p.GPS_Format),
-    sizeof(p.ListenInterval),
-    sizeof(p.ListenDuration), 
-    sizeof(p.WakeRepeat),
-    sizeof(p.WakeInterval),
-    sizeof(p.TimerCorrection),
-    sizeof(p.SearchGPS_time),
-    sizeof(p.boolWakeBeacon),
-    sizeof(p.boolWakeGPSvoice),
-    sizeof(p.WakeBuzzerParams),
-    sizeof(p.WakeFlashPin),
-    sizeof(p.HighSavePower),
-    sizeof(p.GPS_SatTreshHold),
-    sizeof(p.MinAuxRSSI),
-    sizeof(p.SpeechRate),
-    sizeof(p.CallToneFreq),
-    sizeof(p.MorzeSign2),
-    sizeof(p.MorzeSign1), 
-    sizeof(p.EEPROM_SaveFreq),
-    sizeof(p.ExtVoltageWarn),
-};
-*/
-
-#define RX_SIZE 128 // 2 пакета MAVlink
-#define TX_SIZE 16
-uint8_t rxBuf[RX_SIZE], txBuf[TX_SIZE];
 
 
 // булевые флаги кучей
@@ -347,6 +309,8 @@ struct loc_flags {
 
     bool connected;  // в багдаде все спокойно, ничего не оторвалось и мы на внешнем питании - можно не скромничать
     bool crash;		// c мавлинка пришло сообщение о краше
+    bool wasCrash;	// было сообщение о краше
+    bool chute;		// сработал парашют
 
     bool hasPower;   // текущее состояние питания
     bool lastPowerState; // предыдущее состояние для отслеживания изменений
@@ -360,7 +324,7 @@ struct loc_flags {
 
 struct loc_flags lflags = {0,0,0,0,0,0,0}; // все булевые флаги кучей
 
-#define BAD_COORD 0xffffffff
+#define BAD_COORD 0xfffffffful
 
 // из mavlink координаты идут в LONG,  домноженные на 10000000
 //                      максимальное беззнаковое  - 4294967296
@@ -368,10 +332,10 @@ struct loc_flags lflags = {0,0,0,0,0,0,0}; // все булевые флаги �
 struct Coord {
     long lat;
     long lon;
-} coord, home_coord={BAD_COORD,BAD_COORD}; // домашних координат нет
+} coord, home_coord={(long)BAD_COORD,(long)BAD_COORD}; // домашних координат нет
 
 
-Coord bad_coord ={BAD_COORD,BAD_COORD};
+Coord bad_coord ={(long)BAD_COORD,(long)BAD_COORD};
 
 byte gps_points_count; // количество принятых точек, для фильтрации
 
@@ -463,6 +427,9 @@ uint16_t     mav_vbat_A;
 //byte         apm_mav_component;
 //long       mav_alt_gps;
 
+
+long         baro_alt_start;              // home's altitude calculated from pressure * 100
+long         last_baro_alt;               // to measure difference
 
 bool voiceOnBuzzer; // говорить только по радио или пищалкой тоже
 #if defined(BUZZER_PIN_PORT) && defined(BUZZER_PIN_BIT)

@@ -179,28 +179,38 @@ void initRFM(void)
   ItStatus1 = spiReadRegister(0x04);
 
 
-#if 0  // 90 bytes of flash
+#if 1  // 114 bytes of flash
 
-    const byte PROGMEM pairs[] = {
+    static const byte PROGMEM pairs[] = {
+// Interrupt Enable 1 enfferr entxffafull entxffaem enrxffafull enext enpksent enpkvalid encrcerror 00h
+// Interrupt Enable 2 enswdet enpreaval enpreainval enrssi enwut enlbd enchiprdy enpor 03h
 	 0x05, 0x00 ,
-	 0x06, 0x40 ,
-	 0x07, RF22B_PWRSTATE_READY,
-	 0x0a, 0x05 ,
-	 0x0b, 0x12 ,
-	 0x0c, 0x15 ,
-	 0x0d, 0xfd ,
-	 0x0e, 0x00 ,
-	 0x30, 0x00 ,
-	 0x79, 0 ,
-	 0x7a, 0x05 ,
-	 0x70, 0x24 ,
-	 0x71, 0x12 ,
-	 0x72, 0x08 ,
+	 0x06, 0x40 ,			// interrupt only on preamble detect
+	 0x07, RF22B_PWRSTATE_READY,	     // disable lbd, wakeup timer, use internal 32768,xton = 1; in ready mode
+	 0x0a, 0x05 ,			//  Microcontroller Output Clock  Reserved Reserved clkt[1] clkt[0] enlfc mclk[2] mclk[1] mclk[0] 06h
+	 0x0b, 0x12 ,	// gpio0 TX State
+	 0x0c, 0x15 ,	// gpio1 RX State
+	 0x0d, 0xfd ,	// gpio 2 micro-controller clk output
+	 0x0e, 0x00 ,	// gpio    0, 1,2 NO OTHER FUNCTION.
+	 0x30, 0x00 ,	// disable packet handling
+	 0x79, 0 ,	// start channel
+	 0x7a, 0x05 ,   // 50khz step size (10khz x value) // no hopping
+	 0x70, 0x24 ,	// disable manchester
+	 0x71, 0x12 ,	// trclk=[00] no clock, dtmod=[01] direct using SPI, fd8=0 eninv=0 modtyp=[10] FSK  - 
+
+// fd[7] fd[6] fd[5] fd[4] fd[3] fd[2] fd[1] fd[0] 
+	 0x72, 0x08 ,	// fd (frequency deviation) 8*625Hz == 5.0kHz
+
 	 0x73, 0x00 ,
-	 0x74, 0x00 ,
-	 0x35, 0x7a ,
+	 0x74, 0x00 ,   // no frequency offset
+	 0x35, 0x7a ,	// preath = 15 (60bits), rssioff = 2
+
+// AFC Loop Gearshift Override afcbd enafc afcgearh[2] afcgearh[1] afcgearh[0] 1p5 bypass matap ph0size 40h
 	 0x1d, 0x40 ,
+
+// AFC Limiter Afclim[7] Afclim[6] Afclim[5] Afclim[4] Afclim[3] Afclim[2] Afclim[1] Afclim[0] 00h
 	 0x2a, 0x14 ,
+	 // 		 sync words
 	 0x36, 0x55 ,
 	 0x37, 0x55 ,
 	 0x38, 0x55 ,
@@ -214,13 +224,13 @@ void initRFM(void)
 	spiWriteRegister(addr, pgm_read_byte((uint16_t)pp++));
     }
 
-#else
-// Interrupt Enable 1 enfferr entxffafull entxffaem enrxffafull enext enpksent enpkvalid encrcerror 00h
-// Interrupt Enable 2 enswdet enpreaval enpreainval enrssi enwut enlbd enchiprdy enpor 03h
-   spiWriteRegister(0x05, 0x00);
-  spiWriteRegister(0x06, 0x40);    // interrupt only on preamble detect
+    spiWriteRegister(0x09, (byte)p.FrequencyCorrection);  // (default) c = 12.5p
 
-  spiWriteRegister(0x07, RF22B_PWRSTATE_READY);      // disable lbd, wakeup timer, use internal 32768,xton = 1; in ready mode
+#else
+   spiWriteRegister(0x05, 0x00);
+  spiWriteRegister(0x06, 0x40);    
+
+  spiWriteRegister(0x07, RF22B_PWRSTATE_READY); 
   spiWriteRegister(0x09, (byte)p.FrequencyCorrection);  // (default) c = 12.5p
   spiWriteRegister(0x0a, 0x05);//  Microcontroller Output Clock  Reserved Reserved clkt[1] clkt[0] enlfc mclk[2] mclk[1] mclk[0] 06h
   spiWriteRegister(0x0b, 0x12);    // gpio0 TX State
@@ -240,7 +250,6 @@ void initRFM(void)
   spiWriteRegister(0x70, 0x24);    // disable manchester
   spiWriteRegister(0x71, 0x12);   // trclk=[00] no clock, dtmod=[01] direct using SPI, fd8=0 eninv=0 modtyp=[10] FSK  - 
 				// 
-// fd[7] fd[6] fd[5] fd[4] fd[3] fd[2] fd[1] fd[0] 
   spiWriteRegister(0x72, 0x08);    // fd (frequency deviation) 8*625Hz == 5.0kHz
 //  spiWriteRegister(0x72, 0x02);   // fd (frequency deviation) 2*625Hz == 1.25kHz 
 

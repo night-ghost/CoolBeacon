@@ -857,8 +857,12 @@ const unsigned int sample_len[] PROGMEM = {
 // http://we.easyelectronics.ru/Soft/szhatie-zvuka-v-ima-adpcm.html
 
 // 4->16 bit IMA ADPCM tables of index changes and quantizer step size lookup
-const int8_t  PROGMEM adpcm_index_tab[16] = {-1, -1, -1, -1, 2, 4, 6, 8, -1, -1, -1, -1, 2, 4, 6, 8};
-const uint16_t PROGMEM adpcm_stepsize_tab[89] = {
+static const int8_t  PROGMEM adpcm_index_tab[] = {
+    -1, -1, -1, -1, 2, 4, 6, 8,  // две строки полностью одинаковы, так что достаточно чуууть поменять маску
+    -1, -1, -1, -1, 2, 4, 6, 8
+};
+
+static const uint16_t PROGMEM adpcm_stepsize_tab[89] = {
       7,     8,     9,    10,    11,    12,    13,    14,    16,    17,
      19,    21,    23,    25,    28,    31,    34,    37,    41,    45,
      50,    55,    60,    66,    73,    80,    88,    97,   107,   118,
@@ -876,19 +880,19 @@ uint16_t adpcmDec(uint8_t sample_in, uint16_t sample_prev, uint8_t *index_prev) 
     uint16_t diffq, step;
     int8_t index;
 
-    sample_prev += 32768; /*convert to unsigned*/
+    sample_prev += 32768; // convert to unsigned
     index = *index_prev;
 
-    /* Find quantizer step size from lookup table using index */
+    // Find quantizer step size from lookup table using index 
     step = pgm_read_word(&adpcm_stepsize_tab[index]);
 
-    /* Inverse quantize the ADPCM code into a difference using the quantizer step size */
+    // Inverse quantize the ADPCM code into a difference using the quantizer step size 
     if (sample_in & 4) diffq  = step; else diffq = 0; step >>= 1;
     if (sample_in & 2) diffq += step;                 step >>= 1;
     if (sample_in & 1) diffq += step;                 step >>= 1;
     diffq += step;
 
-    /* Add the difference to the predicted sample */
+    // Add the difference to the predicted sample 
     if (sample_in & 8) { // sign
         if (sample_prev > diffq)            sample_prev -= diffq;
         else sample_prev = 0;
@@ -911,13 +915,6 @@ uint16_t adpcmDec(uint8_t sample_in, uint16_t sample_prev, uint8_t *index_prev) 
 }
 
 
-
-//void delayMicroseconds_180(){
-//    delayMicroseconds(180);
-//}
-
-
-
 // timer0 uses 16MHz / 64 = 250Hkz as clock so ticks each 4 microseconds
 // dly  - 134 (0),  155uS (100),  165 (200)
 // так что можно регулировать с шагом 4uS компаратором с 0 таймера, не так плавно зато точнее 
@@ -928,41 +925,30 @@ volatile bool fTone,fHalf;    // тон а не речь - меняем знач
 
 ISR(TIMER0_COMPA_vect) {
     OCR0A = TCNT0 + inc; // отложим следующее прерывание
-    if(fTone)
-	OCR2A = fHalf?0x30:0xd0;
-    else
-	OCR2A = voicePWM;    // записать новое значение ШИМ
+
+    if(fTone) {	//		если генерируем тон
+	OCR2A = fHalf?0x30:0xd0; // то новое значение задаем самостоятельно
+	fHalf=!fHalf; 		// другой полупериод
+    } else
+	OCR2A = voicePWM;        // записать новое значение ШИМ
     fInt = 1; 		// было прерывание
-    fHalf=!fHalf;
 }
 
 // используется ТОЛЬКО изнутри формирования звука при включенном таймере
-void beep(){
 
-
-#if 1
-    inc=200/4; // 2777Hz
+void beep(unsigned int t){
+    inc=200/4; // 2500Hz
     fTone=true;
-//    TIMSK0 |= (1<<OCIE0A); // разрешим compare  interrupt
-    delay_100(); // 0.1s one Beep
-//    TIMSK0 &= ~(1 << OCIE0A); // запретим compare interrupt
+    delay(t); 
     fTone=false;
-#else
-//    byte a=128,c=255;
-    byte a=0x30,c=0xd0;
-
-    for(byte i=255; i!=0; i--){ // ~0.1s
-	OCR2A=a;
-	delayMicroseconds_180();//delayMicroseconds(180); // 2777 hz
-	OCR2A=c;
-	delayMicroseconds_180();//delayMicroseconds(180);
-    }
-#endif
+}
+void beep(){
+    beep(100); // 0.1s one Beep
 }
 
 void wave(int v){
-	voicePWM = (byte)(v / 380  - 96);
-	fInt=0; while(!fInt);	// wait for interrupt
+    voicePWM = (byte)(v / 380  - 96);
+    fInt=0; while(!fInt);	// wait for interrupt
 }
 
 
@@ -985,29 +971,27 @@ void _sendVOICE(char *s, byte beeps){
     {
 //    uint16_t dly = (( p.SpeechRate + 1400 ) * 155L ) / 1500; // 155uS default 
 	uint16_t dly = (( p.SpeechRate + 1400 ) * 220L ) / 1500; // 220uS  - время расчета не входит в задержку
-	inc = dly/4; // инкремент таймера 0
+	inc = dly/4; // инкремент таймера 0 по 4 мкс
     }
 
     TIFR0  |=  1<<OCF0A;   // clear flag
     TIMSK0 |= (1<<OCIE0A); // разрешим compare  interrupt - все время формирования голоса пусть тикает
 
- 
+
     if(beeps){
 	for(; beeps>0; beeps--){
 	    beep();
-	    delay_300();
+	    delay_100();
 	}
     }
 
   for(;;){ 
-    //Red_LED_ON;
-    redBlink(); //delay_1(); // и так хорошо видно
-    //Red_LED_OFF;
-
-    delay(p.SpeechRate);
+    delay(p.SpeechRate); // задержка ДО проверки на конец строки дабы договорить успела и пауза после последней цифры была
 
     byte c= *s++; // byte from string
     if(c==0) break;
+
+    redBlink(); 
 
     byte n=c - '0';
 #if !defined(SKIP_STAR)
@@ -1018,12 +1002,14 @@ void _sendVOICE(char *s, byte beeps){
 	wav=(byte *)pgm_read_word(&samples[n]);
 	len=        pgm_read_word(&sample_len[n]);
     } else {
-	if(c == '#' ) {
+	if(c == '#' ) {		// разделяет широту и долготу
 	    beep(); delay_50(); beep();
-	} else if(c=='.' || c=='*') {
+	} else if(c=='.') {	// точка, разделяет целое и дробное
 	    beep();
+	} else if(c=='*') {	// признак краша
+	    beep(500);
 	} 
-	delay_300(); //delay(p.SpeechRate * 3);
+	delay_300(); //delay(p.SpeechRate * 3); и так сойдет зато компактнее
 	continue;
     }
     
@@ -1036,25 +1022,19 @@ void _sendVOICE(char *s, byte beeps){
 
         sample_prev = adpcmDec(s, sample_prev, &index);
         wave((int)sample_prev);
-//	voicePWM = (byte)(((int)sample_prev) / 380  - 96);
-//	fInt=0; while(!fInt);	// wait for interrupt
 
         sample_prev = adpcmDec(s>>4, sample_prev, &index);
         wave((int)sample_prev);
-//    	voicePWM = (byte)(((int)sample_prev) / 380  - 96); // store next PWM
-//    	fInt=0; while(!fInt);	// wait for interrupt
     }
 //    voicePWM=0; // убрать ШИМ на время паузы, а не оставлять последнее значение - так хуже
-    fInt=0;
-//    while(!fInt);	 // догенерить остаток
-    //delay_50(); // пауза между цифрами
-    delay_10(); // пауза между цифрами
+//    fInt=0;   while(!fInt);	 // догенерить остаток
+    //delay_50(); // пауза между цифрами есть и в начале
   }
 
   TIMSK0 &= ~(1 << OCIE0A); // запретим compare interrupt
 
   TIMSK2 = 0; // выключить таймер
-  TCCR2A = 0;
+//  TCCR2A = 0; его можно не сбрасывать, таймер все равно остановлен
   TCCR2B = 0;
  
   BUZZER_LOW; // могли говорить в пищальник и забыть

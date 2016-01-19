@@ -5,6 +5,7 @@
 */
 
 void sendCoordsSms();
+void sendCoordsSms(bool fChute);
 
 #if defined(USE_GSM)
 extern GSM gsm;
@@ -13,13 +14,21 @@ extern GSM gsm;
 void chute_start() { // сработка парашюта
     DBG_PRINTLN("chute on");
 
+    lflags.chute=true;        // флаг сработки
+
+    if( (mav_baro_alt - baro_alt_start) > CHUTE_MIN_ALT){ // достаточная высота
+	// собственно команда на раскрытие
+    }
 
 
 // перашЮт раскрыт, шлем СМС пока висим высоко
 #if defined(USE_GSM)
-    sendCoordsSms();
-    gsm.end(); // GSM сделал свое дело - закончим работу и выключим питание
+    sendCoordsSms(true);
+//    gsm.end(); // GSM сделал свое дело - закончим работу и выключим питание - пошлем еще одно при дизарме
+    lflags.smsSent = false; // пошлем еще раз по приземлении
+    gsm.set_sleep(true);
 #endif
+
 }
 
 
@@ -27,13 +36,16 @@ void chute_start() { // сработка парашюта
 uint8_t      mav_throttle;              // 0..100
 long         mav_alt_rel;               // altitude - float from MAVlink! * 100
 long         mav_climb;                 //< Current climb rate in meters/second * 100
+
 int16_t      mav_pitch;                 // pitch from DCM
 int16_t      mav_roll;                  // roll from DCM
 
 byte         mav_mode;
+
 long         mav_alt_error;             // float from MAVlink!  ///< Current altitude error in meters * 100
 
 long         mav_baro_alt;              // altitude calculated from pressure * 100
+
 int          mav_xacc;                  //< X acceleration (m/s^2) * 1000
 int          mav_yacc;                  //< Y acceleration (m/s^2) * 1000
 int          mav_zacc;                  //< Z acceleration (m/s^2) * 1000
@@ -41,7 +53,7 @@ int          mav_zacc;                  //< Z acceleration (m/s^2) * 1000
 */
 
 //void chute_check(){ // периодическая проверка состояния борта на тему "а не пора ли?" 
-//
+// лучше проверять по мере получения соответствующих пакетов с контроллера
 //}
 
 struct ModeFlags {
@@ -69,37 +81,84 @@ static const ModeFlags PROGMEM modeFlags[] = {
     /* mode 16 - Position hold (new) */ { 1, 1 },
 };
 
+byte control_loss_count;   // number of iterations we have been out of control
+
+
+
+void chute_lost() {
+    if(!lflags.motor_armed) {
+	control_loss_count=0;
+	return;
+    }
+
+    if(lflags.chute) return; // уже сработал
+    if(last_baro_alt < mav_baro_alt){	// если поднимаемся то все ОК
+	control_loss_count=0;
+	return;
+    }
+    
+    control_loss_count++;
+
+    if(control_loss_count > CHUTE_ON_COUNT)
+	chute_start(); // сработка парашюта
+}
+
+
 inline ModeFlags getModeFlags() {
     return modeFlags[mav_mode];
 }
 
 inline void chute_got_climb(){ // получена скороподъемность, проверяем на тему "а не пора ли?" 
-    if(!lflags.motor_armed) return;
-    
     ModeFlags f = getModeFlags();
     
     if(!f.useChute) return;
-    if( f.altHold) return;	// только в режимах БЕЗ автоудержаниея высоты
+    if( f.altHold) return;	// только в режимах БЕЗ автоудержания высоты
+
+/*
+mav_throttle // 0-100
+mav_alt_rel  //< Current altitude (MSL), in meters * 100
+mav_climb    //< Current climb rate in meters/second * 100
+
+    если скорость снижения превышает определенную - падаем. 
+    Если моторы встали а высота уменьшается - падаем. 
+    Если высота маленькая а вертикальная скорость большая - падаем...
+
+*/
 }
 
-inline void chute_got_alterr(){ // получена ошибка высоты, проверяем на тему "а не пора ли?" 
-    if(!lflags.motor_armed) return;
+inline void chute_got_imu(){ // получена показание приборов, проверяем на тему "а не пора ли?" 
+    ModeFlags f = getModeFlags();
 
+    if(!f.useChute) return;
+    if( f.altHold) return;	// только в режимах БЕЗ автоудержания высоты
+
+
+/*
+mav_baro_alt // altitude in meters * 100
+mav_xacc //< X acceleration (m/s^2) * 1000
+mav_yacc //< Y acceleration (m/s^2) * 1000
+mav_zacc //< Z acceleration (m/s^2) * 1000
+
+
+    Если ускорение вниз почти нулевое
+    винтом книзу с изменением высоты вниз более секунды
+*/
+}
+
+
+
+inline void chute_got_alterr(){ // получена ошибка высоты, проверяем на тему "а не пора ли?" 
     ModeFlags f = getModeFlags();
 
     if(!f.useChute) return;
     if(!f.altHold) return;	// только в режимах с автоудержанием высоты
+
+/*
+mav_alt_error // in meters * 100
+
+    тут вроде как все просто: ошибка превысила порог и растет - контроллер не справился, падаем
+*/
+    if(mav_alt_error > 100)
+	chute_lost();
 }
-
-inline void chute_got_imu(){ // получена показание приборов, проверяем на тему "а не пора ли?" 
-    if(!lflags.motor_armed) return;
-
-    ModeFlags f = getModeFlags();
-
-    if(!f.useChute) return;
-}
-
-
-
-
 

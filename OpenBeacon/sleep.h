@@ -177,6 +177,7 @@ inline void narcoleptic_calibrate() {
 }
 
 void doSleep(uint16_t sleep_periods){
+    
     while (sleep_periods >= 512) {
       narcoleptic_sleep_down(WDTO_8S);
       sleep_periods -= 512;
@@ -191,7 +192,6 @@ void doSleep(uint16_t sleep_periods){
     if (sleep_periods & 4)   narcoleptic_sleep_down(WDTO_60MS);
     if (sleep_periods & 2)   narcoleptic_sleep_down(WDTO_30MS);
     if (sleep_periods & 1)   narcoleptic_sleep_down(WDTO_15MS);
-
 }
 
 void deepSleep(uint16_t milliseconds) {
@@ -206,8 +206,9 @@ void deepSleep(uint16_t milliseconds) {
 	microseconds -= watchdogTime_us;
     }
 
-    doSleep(microseconds / watchdogTime_us);
-/* GCC bug
+    doSleep( microseconds / watchdogTime_us);
+
+/* GCC bug https://github.com/arduino/Arduino/issues/4339
 
     uint16_t sleep_periods = (microseconds - watchdogTime_us) / watchdogTime_us;
 

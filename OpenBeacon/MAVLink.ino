@@ -40,10 +40,7 @@ bool read_mavlink(){
         //trying to grab msg  
         if(mavlink_parse_char(MAVLINK_COMM_0, c, &msg, &status)) {
             lastMAVBeat = millis();
-            // 
             lflags.mavlink_active = lflags.mavlink_got = true;
-
-//digitalWrite(LEDPIN, !digitalRead(LEDPIN)); // Эта строка мигает светодиодом на плате. Удобно и прикольно :)
 
             //handle msg
             switch(msg.msgid) {
@@ -61,9 +58,7 @@ bool read_mavlink(){
                 break;
                 
             case MAVLINK_MSG_ID_SYS_STATUS:
-                
                 mav_vbat_A = mavlink_msg_sys_status_get_voltage_battery(&msg) ; //Battery voltage, in millivolts (1 = 1 millivolt)
-                
                 break;
 
             case MAVLINK_MSG_ID_GPS_RAW_INT:
@@ -93,6 +88,7 @@ bool read_mavlink(){
 
 	    case MAVLINK_MSG_ID_HIGHRES_IMU:
 		// 
+		last_baro_alt = mav_baro_alt; // запомним предыдущее значение
 		mav_baro_alt = (long)(mavlink_msg_highres_imu_get_pressure_alt(&msg) * 100);
 		
 		mav_xacc = (int)(mavlink_msg_highres_imu_get_xacc(&msg) * 1000); ///< X acceleration (m/s^2) * 1000
@@ -119,7 +115,7 @@ bool read_mavlink(){
 
 	    case MAVLINK_MSG_ID_STATUSTEXT:
 		mav_severity =  mavlink_msg_statustext_get_severity(&msg);
-		if(SEVERITY_HIGH == mav_severity) { // обрабатываем новое системное сообщение только высокой важности
+		if(SEVERITY_HIGH <= mav_severity) { // обрабатываем новое системное сообщение только высокой важности
 		    byte len= mavlink_msg_statustext_get_text(&msg, (char *)buf);
 		    buf[len]=0;
 		//"Crash: Disarming"
@@ -127,8 +123,8 @@ bool read_mavlink(){
 		    if(strncasecmp_P( (char *)buf, pat, sizeof(pat)-1 )==0){
 			lflags.crash=true;	// дизарм будет чуть позже
 		    }
-		} else
-		    mav_severity = 0; // иначе игнорируем
+		}
+		break;
 
             default:
                 //Do nothing
