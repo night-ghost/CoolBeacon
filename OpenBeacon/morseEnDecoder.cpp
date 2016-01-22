@@ -84,7 +84,7 @@ static const char morseTable[] PROGMEM =
 
 
 
-char morseEncoder::morseSignalString[7];// Morse signal for one character as temporary ASCII string of dots and dashes
+volatile char morseEncoder::morseSignalString[7];// Morse signal for one character as temporary ASCII string of dots and dashes
 char *morseEncoder::strPtr;
 
 //  private:
@@ -92,13 +92,12 @@ byte morseEncoder::encodeMorseChar;   // ASCII character to encode
 boolean morseEncoder::sendingMorse;
 
 //    static int morseSignalPos;
-byte morseEncoder::sendingMorseSignalNr;
+volatile byte morseEncoder::sendingMorseSignalNr;
 uint32_t morseEncoder::sendMorseTimer;
 
 void doSignals();
 void RFM_off(void);
 void RFM_set_TX();
-byte one_listen();
 void waitForCall(byte t);
 
 morseEncoder::morseEncoder()
@@ -147,9 +146,9 @@ void doSignals() {
 
     if (morseEncoder::sendingMorseSignalNr == 0 ) return; // character done
 
-    uint32_t diff = currentTime - morseEncoder::sendMorseTimer;
+    uint16_t diff = currentTime - morseEncoder::sendMorseTimer; // надолго промахнуться не должны
 
-    char& currSignalType = morseEncoder::morseSignalString[morseEncoder::sendingMorseSignalNr-1];
+    volatile char& currSignalType = morseEncoder::morseSignalString[morseEncoder::sendingMorseSignalNr-1];
 
     bool endOfChar = morseEncoder::sendingMorseSignalNr <= 1;
     
@@ -258,7 +257,7 @@ prepare:
 	    // Reverse binary tree path tracing
 	    byte pNode; // parent node
 	    
-	    char *cp = morseSignalString; //byte morseSignals = 0;
+	    volatile char *cp = morseSignalString; //byte morseSignals = 0;
 
 	    // Travel the reverse path from position p to the top of the morse table
 	    if (p > 0)  {
@@ -287,11 +286,11 @@ prepare:
 		fTone=true; // signal(true); 
 
 	    if(!sendingMorse){ // если передача выключена
-		sendingMorse = true;
+		sendingMorse = true;	// надо включить и инициализировать железо
 	        // init HW
 	        power_timer2_enable();
 
-	        inc = 200/4; // 2500 Hz
+	        inc = 250/4; // 2000 Hz
 
 // ШИМ частотой 16MHz / 256 = 62.5KHz (период 16мкс)
 	        TIMSK2 = (1 << OCIE2A) | (1 << TOIE2);  // Int T2 Overflow + Compare enabled

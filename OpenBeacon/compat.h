@@ -23,3 +23,5 @@ enum ap_var_type {
 };
 
 #define ToDeg(x) (x*57.2957795131)	// *180/pi
+
+#define NOINLINE __attribute__ ((noinline))

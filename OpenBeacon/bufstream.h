@@ -10,7 +10,7 @@ class BS: public BetterStream
 {
   public:
     BS(void);
-    static  void    begin(char *p);
+    inline static  void    begin(char *p) {  bufpos = (byte *)p; };
     virtual byte    available(void);
     virtual byte    read(void);
     virtual byte    peek(void);

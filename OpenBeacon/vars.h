@@ -225,28 +225,32 @@ RAM:012E Требует индивидуальной процедуры подб
 /* 42 .. 4 */
     char phone4[16];
 
-/* 46 .. 6 */
-//    char apn[24];
+/* 46 .. 11 */
+    char url[44];
 
-/* 52 */
+/* 57 .. 6 */
+//    char apn[24]; // beeline.internet.ru
+
+
+/* 63 END */
 
 } p = { // начальные значения
-/* 0  */    446031250,  //Frequency
-/* 1  */    200,	//FrequencyCorrection
-/* 2  */    0,
-/* 3  */    10,
-/* 4  */    60,
-/* 5  */    240,
-/* 6  */    1200,
-/* 7  */    100,
-/* 8  */    10,
-/* 9  */    1500,
-/* 10 */    3,
-/* 11 */    3,
-/* 12 */    50,		//ListenDuration
-/* 13 */    3,
-/* 14 */    5,
-/* 15 */    0,
+/* 0  */    446031250,  // Frequency
+/* 1  */    200,	// FrequencyCorrection
+/* 2  */    0,		// DeadTimer
+/* 3  */    10,		// IntStart
+/* 4  */    60,		// Intlimit
+/* 5  */    240,	// SearchTime
+/* 6  */    1200,	// Sleep
+/* 7  */    100,	// GPS_ErrorTresh
+/* 8  */    10,		// GPS_MonitInterval
+/* 9  */    1500,	// GPS_MonDuration
+/* 10 */    3,		// GPS_Format
+/* 11 */    3,		// ListenInterval
+/* 12 */    50,		// ListenDuration
+/* 13 */    3,		// WakeRepeat
+/* 14 */    5,		// WakeInterval
+/* 15 */    0,		// TimerCorrection
 /* 16 */    5,		// SearchGPS_time
 /* 17 */    0,		// boolWakeBeacon
 /* 18 */    1,		// boolWakeGPSvoice
@@ -262,17 +266,31 @@ RAM:012E Требует индивидуальной процедуры подб
 /* 28 */    1,		// EEPROM_SaveFreq
 /* 29 */    0,		// ExtVoltageWarn
 #define PARAMS_END 30
+
+#ifdef PHONE1
 /* 30 */    PHONE,
+#else
+	    "",
+#endif
+
 #ifdef PHONE1
 /* 34 */    PHONE1,
+#else
+	    "",
 #endif
 #ifdef PHONE2
 /* 38 */    PHONE2,
+#else
+	    "",
 #endif
 #ifdef PHONE3
 /* 42 */    PHONE3,
+#else
+	    "",
 #endif
-/* 46 *///    APN,
+/* 46 */    GSM_SMS_URL,  // http:/ykoctpa.ru/map?q=
+
+//* 57 */    APN,  // beeline.internet.ru
 
 
 };
@@ -284,12 +302,13 @@ struct StrParam {
 };
 
 const StrParam strParam[] = {
-    { p.phone1, 16 },
-    { p.phone2, 16 },
-    { p.phone3, 16 },
-    { p.phone4, 16 },
+    { p.phone1, sizeof(p.phone1) },
+    { p.phone2, sizeof(p.phone2) },
+    { p.phone3, sizeof(p.phone3) },
+    { p.phone4, sizeof(p.phone4) },
     { (char *)&p.MorzeSign2, 8 },
-//    { p.apn, 24 },
+    { p.url, sizeof(p.url) },
+//    { p.apn, sizeof(p.apn) },
 };
 
 
@@ -299,27 +318,29 @@ struct loc_flags {
     bool mavlink_got; 		// флаг получения пакета
     bool mavlink_active; 	// флаг активности (навсегда)
     bool mavbeat;		// MAVLink session control
+
     bool callActive;	// недавно принят вызов
-    
-    bool hasGPSdata;  // есть координаты для сообщения
-    bool pointDirty;  // последняя принятая точка не сохранена в EEPROM
-    bool listenGPS;   // состояние - слушаем или нет GPS
+
+    bool hasGPSdata;    // есть координаты для сообщения
+    bool pointDirty;    // последняя принятая точка не сохранена в EEPROM
+    bool listenGPS;     // состояние - слушаем или нет GPS
+
     bool gsm_ok;	// инициализация удалась
+    bool smsSent;	// флаг отправки SMS
 
-
-    bool connected;  // в багдаде все спокойно, ничего не оторвалось и мы на внешнем питании - можно не скромничать
+    bool connected;    // в багдаде все спокойно, ничего не оторвалось и мы на внешнем питании - можно не скромничать
     bool crash;		// c мавлинка пришло сообщение о краше
     bool wasCrash;	// было сообщение о краше
     bool chute;		// сработал парашют
 
-    bool hasPower;   // текущее состояние питания
-    bool lastPowerState; // предыдущее состояние для отслеживания изменений
-    bool wasPower;   // ранее было подано питание с коптера
+    bool hasPower;          // текущее состояние питания
+    bool lastPowerState;    // предыдущее состояние для отслеживания изменений
+    bool wasPower;          // ранее было подано питание с коптера
     
-    bool motor_armed;	// текущее состояние
+    bool motor_armed;       // текущее состояние
     bool last_armed_status; // предыдущее состояние для отслеживания изменений
-    bool motor_was_armed;// флаг "моторы были включены" навсегда
-    bool smsSent;	// флаг отправки SMS
+    bool motor_was_armed;   // флаг "моторы были включены" навсегда
+    
 };
 
 struct loc_flags lflags = {0,0,0,0,0,0,0}; // все булевые флаги кучей
@@ -349,8 +370,6 @@ uint32_t  disconnectTime; // время обнаружения потери св
 uint32_t  lastPointTime; // время с последней точки от GPS
 
 byte BuzzerToneDly, BuzzerPin, FlashPin;
-
-uint8_t  ItStatus1;
 
 //uint32_t watchdogTime_us = 0; // было 16000 но все равно калибровать будем
 uint16_t watchdogTime_us = 0; // было 16000 но все равно калибровать будем, а таймер 16-битный, экономим 40 байт флеша
@@ -440,7 +459,7 @@ byte buzzerBit;
 #endif
 
 // работа со статическими временными переменными намного проще чем со стеком
-Coord p1, p2; // временные координаты для работы с треком
+Coord point1, point2; // временные координаты для работы с треком
 uint16_t crc; // статический буфер выгоднее 
 
 

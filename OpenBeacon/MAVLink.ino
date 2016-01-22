@@ -84,6 +84,8 @@ bool read_mavlink(){
 // сразу преобразуем в градусы дабы не хранить float
                 mav_pitch = ToDeg(mavlink_msg_attitude_get_pitch(&msg));
                 mav_roll = ToDeg(mavlink_msg_attitude_get_roll(&msg));
+
+		chute_got_atti();
                 break;
 
 	    case MAVLINK_MSG_ID_HIGHRES_IMU:

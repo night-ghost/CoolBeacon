@@ -55,13 +55,6 @@ GSM::GSM(){
 
 }
 
-
-byte GSM::_available(){
-    return gsm.available();
-}
-byte GSM::_read(void){
-    return gsm.read();
-}
 byte GSM::_write(uint8_t c){
     return gsm.write(c);
 }
@@ -137,10 +130,10 @@ bool GSM::set_sleep(byte mode){
 
 void GSM::readOut() {
     char c;
-    if( gsm._available()) {
+    if( gsm.available()) {
 //serial.print_P(PSTR("< "));
-	while( gsm._available()) {
-	    c=gsm._read();    // Clean the input buffer from last answer and unsolicit answers
+	while( gsm.available()) {
+	    c=gsm.read();    // Clean the input buffer from last answer and unsolicit answers
 //serial.print(c);
 	    delay_10();
 	}
@@ -182,38 +175,47 @@ uint8_t GSM::wait_answer(const char* answer, const char* answer2, unsigned int t
     unsigned long deadtime = millis() + timeout;
     char has_answer=0;
 
-    delay_100();
+    delay_100(); // модуль не особо шустрый
 
-    // this loop waits for the answer
-    do{
-        if(gsm._available()) {    // if there are data in the UART input buffer, reads it and checks for the asnwer
-            char c;
-            *cp++ = c = gsm._read();
-            *cp=0;
+    
+    do{	// this loop waits for the answer
+
+	delay_10(); // чуть подождать чтобы что-то пришло
+
+        if(gsm.available()) {	// за время ожидания что-то пришло: 38400 бод - 4800 байт/с, за 10мс придет 48 байт
+    	    do {
+        	char c;
+        	*cp++ = c = gsm.read();
+        	*cp=0;
 //serial.print(c);
+    	    } while(gsm.available()); // вычитать все что есть, а потом проверять будем
 
-	    if(!has_answer) { // пока нет ответа - проверяем
+	    // данные закончились, можно и проверить, если еще ответ не получен
+	    if(!has_answer) { 
                 // check if the desired answer  is in the response of the module
                 if((result_ptr=strstr_P(response, answer)) != NULL)  { // окончательный ответ
                     has_answer = 1;
+//serial.println_P(PSTR("="));
                 } else
                 if((result_ptr=strstr_P(response, PSTR("ERROR"))) != NULL)  { // окончательная ошибка
                     has_answer = 3;
+//serial.println_P(PSTR(" ERR"));
                 }
+/*
                 if(has_answer){ // ответ только что получен
-//serial.println_P(PSTR("="));
 		    do {
-			while(gsm._available()) {    // if there are data in the UART input buffer, reads it and checks for the asnwer
-        		    *cp++ = c = gsm._read();
+			while(gsm.available()) {
+        		    *cp++ = c = gsm.read();
         		    *cp=0;
 //serial.print(c);
 			}
 			delay_10();
-		    } while(gsm._available());
+		    } while(gsm.available());
 		}
+*/
             }
             // TODO: контролировать разбиение на строки
-        } else if(has_answer) // если данные кончились и ответ получен - готово
+        } else if(has_answer) // за время ожидания ничего не пришло - данные кончились, если ответ получен - готово
     	    break;
     } while( millis() < deadtime ); // Waits for the asnwer with time out
 
@@ -233,23 +235,25 @@ uint8_t GSM::wait_answer(const char* answer, unsigned int timeout){
 
 
 bool GSM::sendSMS(const char * phone, const char * text) {
-  gsm.command(PSTR("+CMGF=1")); // text mode
-  gsm.command(PSTR("+CMGD=1")); // delete all messages
+    if(!strlen(phone)) return true;	// если номер не задан то считаем что все ОК
+    
+    gsm.command(PSTR("+CMGF=1")); // text mode
+    gsm.command(PSTR("+CMGD=1")); // delete all messages
 //  gsm.command(PSTR("+CSMS=1")); // mode 1
 
-  gsm.print_P(PSTR("AT+CMGS=\""));
-  gsm.print_P(phone);
-  readOut();
-  gsm.println_P(PSTR("\""));
+    gsm.print_P(PSTR("AT+CMGS=\""));
+    gsm.print(phone);
+    readOut();
+    gsm.println_P(PSTR("\""));
 
-  if(!wait_answer(PSTR(">"),3000)) return false;
+    if(!wait_answer(PSTR(">"),3000)) return false;
 
-  gsm.print(text);
-  gsm.println('\x1a');
+    gsm.print(text);
+    gsm.println('\x1a');
 
-  bool ok = wait_answer(s_ok,PSTR("+CMGS:"),30000) == 1;
+    bool ok = wait_answer(s_ok,PSTR("+CMGS:"),30000) == 1;
 
-  return ok && result2_ptr!=NULL;
+    return ok && result2_ptr!=NULL;
 }
 
 static const char PROGMEM patt_minus[] = "\x1c\x38\x3d\x43\x41\x3a"; //1c 38 3d 43 41 3a - Минус в UTF без старшего байта
@@ -378,26 +382,40 @@ int GSM::balance(){
     return v;
 }
 
+
+// есть телеметрия, которая и так передает координаты, к тому же GSM на борту не сильно полезен остальным приборам
 #if 0
 
-
-
-void gprs_init() {  //Процедура начальной инициализации GSM модуля
+void gprs_point() {  //Процедура начальной инициализации GSM модуля
  
+    bs.begin(buf);
+    bs.print_P(PSTR("ll="));
+    
  //Установка настроек подключения
-     gsm.command("AT+SAPBR=1,1");     //             Открыть несущую (Carrier)
-     gsm.command("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\""); //тип подключения - GPRS  
-     gsm.command("AT+SAPBR=3,1,\"APN\",\"%S\"",APN);
-     gsm.command("AT+SAPBR=3,1,\"USER\",\"user\"\r\n");
-     gsm.command("AT+SAPBR=3,1,\"PWD\",\"pass\"\r\n");
-     gsm.command("AT+SAPBR=1,1\r\n");  // Устанавливаем GPRS соединение
-     gsm.command("AT+HTTPINIT\r\n");  //  Инициализация http сервиса
-     gsm.command("AT+HTTPPARA=\"CID\",1\r\n");  //Установка CID параметра для http сессии
-     gsm.command("AT+HTTPPARA=\"URL\",\"http:/????????.ru/gps_tracker/gps_tracker1.php?id_avto=?N&lat=XXXXXlon=YYYYY\"");    //Собственно URL, после sprintf с координатами
-     gsm.command("AT+HTTPACTION=0");    //Запросить данные методом GET
-     gsm.command("AT+HTTPREAD");   //дождаться ответа
-     gsm.command("AT+HTTPTERM");    //остановить HTTP
+    gsm.command(PSTR("+SAPBR=1,1"));     //             Открыть несущую (Carrier)
+    gsm.command(PSTR("+SAPBR=3,1,\"CONTYPE\",\"GPRS\"")); //тип подключения - GPRS  
+    gsm.command(PSTR("+SAPBR=3,1,\"APN\",\"" APN "\""));
+//     gsm.command(PSTR("+SAPBR=3,1,\"USER\",\"user\""));
+//     gsm.command(PSTR("+SAPBR=3,1,\"PWD\",\"pass\""));
+    gsm.command(PSTR("+SAPBR=1,1"));  // Устанавливаем GPRS соединение
+    gsm.command(PSTR("+HTTPINIT"));  //  Инициализация http сервиса
+    gsm.command(PSTR("+HTTPPARA=\"CID\",1"));  //Установка CID параметра для http сессии
+    gsm.print_P(PSTR("+HTTPPARA=\"URL\",\""));
+    gsm.print_P(PSTR(URL)); //     http:/????????.ru/gps/track.php?id=?N&ll=    //Собственно URL, после sprintf с координатами
+    readOut();
+    gsm.print(coord.lat);
+    gsm.print(',');
+    gsm.print(coord.lon);
+    gsm.println_P(PSTR("\""));
 
+    if(!wait_answer(patt,15000)) {
+//serial.print_P(PSTR("No ans"));
+	return false;
+    }
+ 
+    gsm.command(PSTR("+HTTPACTION=0"));    //Запросить данные методом GET
+    gsm.command(PSTR("+HTTPREAD"));   //дождаться ответа
+    gsm.command(PSTR("+HTTPTERM"));    //остановить HTTP
 }
 #endif
 
@@ -413,3 +431,5 @@ AT+HTTPACTION=0    //Запросить данные методом GET
 AT+HTTPREAD   //дождаться ответа
 AT+HTTPTERM    //остановить HTTP
 */
+
+

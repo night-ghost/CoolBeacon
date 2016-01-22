@@ -27,7 +27,7 @@
 #include <inttypes.h>
 
 #ifndef RX_BUFFER_SIZE
-#define RX_BUFFER_SIZE 128
+#define RX_BUFFER_SIZE 64
 #endif
 #ifndef TX_BUFFER_SIZE
 #define TX_BUFFER_SIZE 16
@@ -41,6 +41,9 @@
 #include "WProgram.h"
 #include "pins_arduino.h"
 #endif
+
+#include "config/AltSoftSerial_Boards.h"
+#include "config/AltSoftSerial_Timers.h"
 
 #if defined(__arm__) && defined(CORE_TEENSY)
 #define ALTSS_BASE_FREQ F_BUS
@@ -74,6 +77,7 @@ public:
 //	static uint8_t library_version() { return 1; }
 //	static void enable_timer0(bool enable) { }
 //	static bool timing_error;
+	inline bool enabled(){ CHECK_INT_INPUT_CAPTURE(); }
 private:
 	static void init(uint32_t cycles_per_bit);
 //	static void writeByte(uint8_t byte);

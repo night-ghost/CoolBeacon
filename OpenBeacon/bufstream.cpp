@@ -19,10 +19,10 @@ BS::BS()
 {
 }
 
-void BS::begin(char *p)
+/*void BS::begin(char *p)
 {
     bufpos = (byte *)p;
-}
+}*/
 
 //------------------ write ---------------------------------------------------
 

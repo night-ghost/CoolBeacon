@@ -7,7 +7,7 @@
 
 */
 
-#define RESPONCE_LENGTH 200
+#define RESPONCE_LENGTH 200 // ответ на USSD бывает весьма длинным
 
 extern byte buf[];
 
@@ -17,19 +17,7 @@ class GSM: public AltSoftSerial
     GSM(void);
     static bool begin();
     static void end();
-/*
-    byte     available(void);
-    byte     read(void);
-    byte     peek(void);
-    void     flush(void);
-    size_t   write(uint8_t c);
-*/
-//    using AltSoftSerial::write;
-//    using AltSoftSerial::read;
-//    using AltSoftSerial::available;
-//    using AltSoftSerial::flush;
-    static byte _available();
-    static byte _read(void);
+
     static byte _write(uint8_t c);
 
     static void initGSM(void);

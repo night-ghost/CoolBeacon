@@ -10,19 +10,15 @@
 #define RF22B_PWRSTATE_RX           0x05
 #define RF22B_PWRSTATE_TX           0x09
 
-void spiWriteBit(uint8_t b);
 void spiSendCommand(uint8_t command);
-void spiSendAddress(uint8_t i);
 uint8_t spiReadData(void);
 void spiWriteData(uint8_t i);
 uint8_t spiReadRegister(uint8_t address);
 void spiWriteRegister(uint8_t address, uint8_t data);
-inline void eeprom_write(int n, byte b) { eeprom_write_byte((byte *)n,b); }
-inline byte eeprom_read(int n) { return eeprom_read_byte((byte *)n); }
 
 void narcoleptic_sleep(uint8_t wdt_period,uint8_t sleep_mode);
 
-inline boolean getBit(byte Reg, byte whichBit) {
+static inline boolean getBit(byte Reg, byte whichBit) {
     return  Reg & (1 << whichBit);
 }
 #define NOP() __asm__ __volatile__("nop")
@@ -49,7 +45,7 @@ void spiWriteData(uint8_t i){
   for (uint8_t n = 8; n >0; n--) {
 
     SCK_off;
-    NOP();
+//    NOP();  времени проверки достаточно
     if (i & 0x80) {
         SDI_on;
     } else {
@@ -57,7 +53,7 @@ void spiWriteData(uint8_t i){
     }
     NOP();
     SCK_on;
-    NOP();
+//    NOP();  время выполнения сдвига достаточно
 
     i = i << 1;
   }
@@ -75,7 +71,7 @@ void spiSendCommand(uint8_t command)
   spiWriteData(command);
 }
 
-inline void spiSendAddress(uint8_t i)
+static inline void spiSendAddress(uint8_t i)
 {
   spiSendCommand(i & 0x7f);
 }
@@ -86,7 +82,6 @@ uint8_t spiReadData(void)
   SCK_off;
 
   for (uint8_t i = 8; i > 0; i--) {   //read fifo data byte
-    uint8_t r = 0;
     SCK_on;
     NOP();
 
@@ -139,7 +134,7 @@ void beacon_tone_150(uint16_t hz) {
 }
 
 
-inline void rfmSetCarrierFrequency(uint32_t f)
+static inline void rfmSetCarrierFrequency(uint32_t f)
 {
   uint16_t fb, fc;
   byte hbsel;
@@ -175,8 +170,10 @@ inline void rfmSetCarrierFrequency(uint32_t f)
 
 void initRFM(void)
 {
-  ItStatus1 = spiReadRegister(0x03);   // read status, clear interrupt
-  ItStatus1 = spiReadRegister(0x04);
+    byte ItStatus1;
+    
+    ItStatus1 = spiReadRegister(0x03);   // read status, clear interrupt
+    ItStatus1 = spiReadRegister(0x04);
 
 
 #if 1  // 114 bytes of flash
@@ -302,11 +299,6 @@ void initRFM(void)
     spiWriteRegister(0x25, (byte)k3); //  
 
     rfmSetCarrierFrequency(p.Frequency);
-    
-//  unsigned int DR = ( ( (long) BEACON_LISTEN_FREQ ) << 16 ) / 15625;
-  
-//  spiWriteRegister(0x6e, ( DR & 0xFF )); //TX Data Rate 1
- // spiWriteRegister(0x6f, ( DR >> 8 )); // TX Data Rate 0
 }
 
 void delay_1(){
@@ -330,22 +322,6 @@ void delay_300(){
     delay_100();   delay_100();   delay_100();
 }
 
-void adc_setup(){
-
-    ADCSRA |= (1<<ADEN); //Enable ADC
-
-// see http://www.microsmart.co.za/technical/2014/03/01/advanced-arduino-adc/
-
-// set up the ADC
-    ADCSRA &= ~PS_128;  // remove bits set by Arduino library
-
-  // you can choose a prescaler from above.
-  // PS_16, PS_32, PS_64 or PS_128
-    ADCSRA |= PS_64;    // set our own prescaler to 64.
-
-    delay_10();
-}
-
 void RFM_SetPower(byte fInit, uint8_t mode, uint8_t power) {
     if(fInit) {
 	initRFM();
@@ -362,12 +338,11 @@ void RFM_set_TX(){
 }
 
 void RFM_tx_min(){
-    RFM_SetPower(1,RF22B_PWRSTATE_TX, RFM_MIN_POWER );
+    RFM_SetPower(1, RF22B_PWRSTATE_TX, RFM_MIN_POWER );
 }
 
 void RFM_off(void)
-{
-  // TODO: SDN mangling in the future
+{  // TODO: SDN mangling in the future
   spiWriteRegister(0x07, RF22B_PWRSTATE_POWERDOWN);
 }
 

@@ -6,6 +6,8 @@
 
 void sendCoordsSms();
 void sendCoordsSms(bool fChute);
+unsigned int sqrt32(unsigned long n);
+
 
 #if defined(USE_GSM)
 extern GSM gsm;
@@ -32,7 +34,8 @@ void chute_start() { // сработка парашюта
 }
 
 
-/*
+/* данные с борта
+
 uint8_t      mav_throttle;              // 0..100
 long         mav_alt_rel;               // altitude - float from MAVlink! * 100
 long         mav_climb;                 //< Current climb rate in meters/second * 100
@@ -92,6 +95,7 @@ void chute_lost() {
     }
 
     if(lflags.chute) return; // уже сработал
+
     if(last_baro_alt < mav_baro_alt){	// если поднимаемся то все ОК
 	control_loss_count=0;
 	return;
@@ -104,11 +108,11 @@ void chute_lost() {
 }
 
 
-inline ModeFlags getModeFlags() {
+static inline ModeFlags getModeFlags() {
     return modeFlags[mav_mode];
 }
 
-inline void chute_got_climb(){ // получена скороподъемность, проверяем на тему "а не пора ли?" 
+static inline void chute_got_climb(){ // получена скороподъемность, проверяем на тему "а не пора ли?" 
     ModeFlags f = getModeFlags();
     
     if(!f.useChute) return;
@@ -121,12 +125,15 @@ mav_climb    //< Current climb rate in meters/second * 100
 
     если скорость снижения превышает определенную - падаем. 
     Если моторы встали а высота уменьшается - падаем. 
-    Если высота маленькая а вертикальная скорость большая - падаем...
 
 */
+
+    if(mav_climb < -CHUTE_FALL_SPEED ||  mav_throttle == 0) {
+	chute_lost();
+    }
 }
 
-inline void chute_got_imu(){ // получена показание приборов, проверяем на тему "а не пора ли?" 
+static inline void chute_got_imu(){ // получена показание приборов, проверяем на тему "а не пора ли?" 
     ModeFlags f = getModeFlags();
 
     if(!f.useChute) return;
@@ -143,11 +150,32 @@ mav_zacc //< Z acceleration (m/s^2) * 1000
     Если ускорение вниз почти нулевое
     винтом книзу с изменением высоты вниз более секунды
 */
+    uint16_t acc = sqrt32(mav_xacc*mav_xacc + mav_yacc*mav_yacc + mav_zacc*mav_zacc);
+    
+    if(acc > 8000) {// общий вектор ускорения приближается к 1g
+	chute_lost();
+    }
+}
+
+static inline void chute_got_atti(){ // получена показание положения, проверяем на тему "а не пора ли?" 
+    ModeFlags f = getModeFlags();
+
+    if(!f.useChute) return;
+//    if( f.altHold) return;	// только в режимах БЕЗ автоудержания высоты
+
+/*
+mav_pitch  в градусах
+mav_roll
+                
+    винтом не туда с изменением высоты вниз более секунды
+*/   
+    if(labs(mav_pitch) > 80 || labs(mav_roll) > 80){
+	chute_lost();
+    }
 }
 
 
-
-inline void chute_got_alterr(){ // получена ошибка высоты, проверяем на тему "а не пора ли?" 
+static inline void chute_got_alterr(){ // получена ошибка высоты, проверяем на тему "а не пора ли?" 
     ModeFlags f = getModeFlags();
 
     if(!f.useChute) return;
@@ -158,7 +186,9 @@ mav_alt_error // in meters * 100
 
     тут вроде как все просто: ошибка превысила порог и растет - контроллер не справился, падаем
 */
-    if(mav_alt_error > 100)
+    if(mav_alt_error > 200) {// промах более 2-х метров
 	chute_lost();
+    }
 }
+
 
