@@ -259,7 +259,7 @@ byte powerByRSSI() {
 	lastRSSI = rssi;	// запоминаем последнее значение
     else		// сигнала нет
 	if(lastRSSI > 50) 
-	    lastRSSI -= 2; // убавляем по чуть-чуть
+	    lastRSSI -= 1; // убавляем по чуть-чуть
 	else
 	    lastRSSI = 0;
 	
@@ -270,6 +270,10 @@ byte powerByRSSI() {
 void sendVOICE(char *string, byte beeps)
 {
   if(!voiceOnBuzzer) {
+#if USE_MORZE
+    morze.flush(); // дождаться окончания передачи
+#endif
+
     RFM_set_TX();
 
     delay_100();
@@ -300,7 +304,7 @@ ISR(INT1_vect)
 BS bs;
 
 
-#define MULTIPLIER 10000000
+#define MULTIPLIER 10000000 // ArduPilot uses coords in LONG  multiplied by this
 
 #if GPS_COORD_FMT == 1 
 // 1 ГГ ММ СС.С
@@ -605,7 +609,7 @@ void getSerialLine(byte *cp, void(cb)() ){	// получение строки
 	}
 	
 	byte c=serial.read();
-// .available	if(c==0) continue; // пусто
+// uses .available	if(c==0) continue; // пусто
 	
 	if(c==0x0d || (cnt && c==0x0a)){
 //	    serial.println();
@@ -645,6 +649,9 @@ void deepSleep_450(){
 
 //таймерный маяк - посылка и координаты
 inline void Beacon_and_Voice() {
+#if USE_MORZE
+    morze.flush(); // дождаться окончания передачи
+#endif
     sendBeacon();
  
     if( cycles_count % (byte)p.SearchGPS_time) {
@@ -720,6 +727,10 @@ void sayVoltage(byte v, byte beeps){
 
 void sayCoords(){
     sendVOICE(messageBuff, GPS_data_fresh?0:3);
+    
+#if USE_MORZE
+    morze.write(messageBuff);
+#endif
 }
 
 void  beepOnBuzzer_183(){
@@ -962,7 +973,6 @@ unsigned int sqrt32(unsigned long n)
 
 
 
-
 // see https://github.com/Traumflug/Teacup_Firmware/blob/master/dda_maths.c#L74
 uint32_t approx_distance(uint32_t dx, uint32_t dy) {
   uint32_t min, max, approx;
@@ -995,7 +1005,8 @@ unsigned long distance(Coord *p1, Coord *p2){
     unsigned long dstlat = labs(p1->lat - p2->lat) / 100;
     unsigned long dstlon = labs(p1->lon - p2->lon) / 100 /* * scaleLongDown */;
 //    return sqrt(sq(dstlat) + sq(dstlon)) * 111319.5 / MULTIPLIER; нам не нужно точное расстояние 
-    return approx_distance(dstlat, dstlon);
+//    return approx_distance(dstlat, dstlon);
+    return sqrt32(dstlat*dstlat + dstlon*dstlon);
 }
 
 
@@ -1383,11 +1394,7 @@ void setup(void) {
 
 #if USE_MORZE
     morze.write("UA3AYR test beacon 54.54");
-    while(!morze.available()) {
-	morze.encode();
-	redBlink(); 
-	delay_50();
-    }
+    morze.flush(); // дождаться окончания передачи
 #endif
     RFM_off();
 
@@ -1720,7 +1727,11 @@ DBG_PRINTLN("timed beacon init");
             nextTime(nextBeepTime, BEACON_BEEP_DURATION * 3 / 1000 + beaconInterval);  //nextBeepTime = uptime + BEACON_BEEP_DURATION * 3 / 1000 + beaconInterval;
           
             // В конце посылки послушаем эфир
+#if USE_MORZE
+	    if(morze.gotCall() || morze.available() && one_listen() ) {   // Поймали вызов при передаче или не передаем и есть вызов
+#else
             if(one_listen()) {   // Есть вызов
+#endif
 //                DBG_PRINTLN("Call is detected")
                 redBlink();// помигать диодом
                 
@@ -1851,6 +1862,15 @@ DBG_PRINTLN("timed beacon init");
 	}
     } // serial listen
 
+
+#if USE_MORZE
+    morze.encode();
+
+    if(morze.gotCall() ) {   // Поймали вызов при передаче 
+	goto morzeGotCall;
+    }
+#endif
+
   
     // voice listen - независимо от состояния подключения, а то вдруг ошибочка вышла
     if( nowIsTime(NextListenTime) /* uptime>NextListenTime */ ) {
@@ -1858,15 +1878,20 @@ DBG_PRINTLN("timed beacon init");
 
 //	DBG_PRINTLN("time to receive");
 
+#if USE_MORZE
+	if( morze.available() && one_listen() ) {   // не передаем и есть вызов
+#else
 //	if(one_listen() > 5) {
 	if(one_listen()) { // приняли ЛЮБОЙ вызов
+#endif
+morzeGotCall:
 	    for(byte i=5; i>0; i--) {
 		Green_LED_ON;
 	        redBlink(); 
 	        Green_LED_OFF;
 	        delay_10();
 	    }
-//	    DBG_PRINTLN("RSSI ok");
+//	    DBG_PRINTLN("proximity");
 
 	    proximity(Got_RSSI);
 	}
@@ -1874,8 +1899,6 @@ DBG_PRINTLN("timed beacon init");
     }
 
 #if USE_MORZE
-    morze.encode();
-    
     if(!lflags.hasPower && !lflags.listenGPS && morze.available()) { // если на батарее, не слушаем GPS и не передаем морзе то спим до конца секунды
 #else
     if(!lflags.hasPower && !lflags.listenGPS) { // если на батарее n не слушаем GPS то спим до конца секунды

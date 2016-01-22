@@ -1,11 +1,7 @@
 #ifndef MorseEnDecoder_H
 #define MorseEnDecoder_H
 
-#if (ARDUINO <  100)
-#include <WProgram.h>
-#else
 #include <Arduino.h>
-#endif
 
 
 #define WPM 15		// Word-per-minute speed
@@ -27,12 +23,15 @@ class morseEncoder
     inline static boolean available() {
         return !sendingMorse;
     }
+    void flush();
+    inline static bool gotCall(){ bool t = wasCall; wasCall = 0; return t; }
     static volatile char morseSignalString[7];// Morse signal for one character as temporary ASCII string of dots and dashes
     static char *strPtr;
 
 //  private:
     static byte encodeMorseChar;   // ASCII character to encode
-    static boolean sendingMorse;
+    static bool sendingMorse;
+    static bool wasCall;	//флаг пойманного вызова
 
     static volatile byte sendingMorseSignalNr;
     static uint32_t sendMorseTimer;

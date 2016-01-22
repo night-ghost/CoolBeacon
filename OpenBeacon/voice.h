@@ -720,8 +720,10 @@ ISR(TIMER0_COMPA_vect) {
 
 // используется ТОЛЬКО изнутри формирования звука при включенном таймере
 
+#define BEEP_TONE(freq) (1000000 / freq / 2 /* 2 periods */ / 4 /* 4 ms each tick */)
+
 void beep(unsigned int t){
-    inc=200/4; // 2500Hz
+    inc=BEEP_TONE(2500); // 2500Hz
     fTone=true;
     delay(t); 
     fTone=false;
@@ -754,11 +756,10 @@ void _sendVOICE(char *s, byte beeps){
     TCCR2B = (1<<CS20);                     // CLK/1 и режим Fast PWM
     OCR2A=0x0; // начальное значение компаратора
 
-    {
+    
 //    uint16_t dly = (( p.SpeechRate + 1400 ) * 155L ) / 1500; // 155uS default 
-	uint16_t dly = (( p.SpeechRate + 1400 ) * 220L ) / 1500; // 220uS  - время расчета не входит в задержку
-	inc = dly/4; // инкремент таймера 0 по 4 мкс
-    }
+    uint16_t dly = (( p.SpeechRate + 1400 ) * 220L ) / 1500; // 220uS  - время расчета не входит в задержку
+    
 
     TIFR0  |=  1<<OCF0A;   // clear flag
     TIMSK0 |= (1<<OCIE0A); // разрешим compare  interrupt - все время формирования голоса пусть тикает
@@ -798,6 +799,8 @@ void _sendVOICE(char *s, byte beeps){
 	delay_300(); //delay(p.SpeechRate * 3); и так сойдет зато компактнее
 	continue;
     }
+
+    inc = dly/4; // инкремент таймера 0 по 4 мкс - портится от beep
     
 //    voicePWM=0; - без него лучше
     // зачем мешать естественному порядку вещей?! // OCR0A = TCNT0 + inc;   // отложим прерывание на нужное время для определенности

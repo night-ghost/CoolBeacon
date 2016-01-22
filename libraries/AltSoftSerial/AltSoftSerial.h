@@ -30,17 +30,12 @@
 #define RX_BUFFER_SIZE 64
 #endif
 #ifndef TX_BUFFER_SIZE
-#define TX_BUFFER_SIZE 16
+#define TX_BUFFER_SIZE 8
 #endif
 
 #include "../SingleSerial/BetterStream.h"
 
-#if ARDUINO >= 100
 #include "Arduino.h"
-#else
-#include "WProgram.h"
-#include "pins_arduino.h"
-#endif
 
 #include "config/AltSoftSerial_Boards.h"
 #include "config/AltSoftSerial_Timers.h"

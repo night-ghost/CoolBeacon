@@ -9,6 +9,15 @@
 
 #define RESPONCE_LENGTH 200 // ответ на USSD бывает весьма длинным
 
+/*
+для работы с GSM используется слегка модифицированная библиотека AltSoftSerial
+
+изменения: наследование не от Stream а от BetterStream
+добавлена возможность опроса состояния
+некоторая оптимизация
+
+*/
+
 extern byte buf[];
 
 class GSM: public AltSoftSerial

@@ -148,7 +148,7 @@ static inline void rfmSetCarrierFrequency(uint32_t f)
     fb = f / 20000000 - 24;
     fc = (f - (fb + 24) * 20000000) * 2 / 625;
   }
-+*/
+*/
   long mul;
   byte n;
   if (f < 480000000) {
@@ -311,6 +311,7 @@ void delay_10(){
 
 void delay_50(){
     delay(50);
+    // delay_10(); delay_10(); delay_10(); delay_10(); delay_10(); better on 2 bytes only
 }
 
 void delay_100(){
@@ -323,6 +324,11 @@ void delay_300(){
 }
 
 void RFM_SetPower(byte fInit, uint8_t mode, uint8_t power) {
+/* это нельзя делать тут ибо надо периодически переключаться на прием
+#if USE_MORZE
+    morze.flush(); // дождаться окончания передачи
+#endif
+*/
     if(fInit) {
 	initRFM();
         delay_50();

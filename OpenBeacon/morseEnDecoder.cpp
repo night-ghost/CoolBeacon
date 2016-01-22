@@ -1,4 +1,8 @@
-/*          MORSE ENDECODER
+/*         
+
+    morse encoder for CoolBeacon
+
+    based on:
  
  - Morse encoder / decoder classes for the Arduino.
 
@@ -94,6 +98,7 @@ boolean morseEncoder::sendingMorse;
 //    static int morseSignalPos;
 volatile byte morseEncoder::sendingMorseSignalNr;
 uint32_t morseEncoder::sendMorseTimer;
+bool morseEncoder::wasCall;
 
 void doSignals();
 void RFM_off(void);
@@ -129,12 +134,12 @@ void morseEncoder::write(char *cp) {
 extern volatile byte inc;            // инкремент таймера 0 для обеспечения нужной задержки
 extern volatile bool fTone,fHalf;    // тон а не речь - меняем значение ШИМ самостоятельно, отсчитывая полупериоды
 
-volatile uint32_t periods;
+volatile uint32_t periods; // вместо счета миллисекунд считаем свои прерывания
 
-volatile bool fListen;
+volatile bool fListen; // флаг "передача кончилась, можно слушать"
 
 // near 1ms - 1024 uS
-ISR(TIMER0_COMPB_vect) {
+ISR(TIMER0_COMPB_vect) { 
     periods++;
 
     doSignals();
@@ -193,23 +198,37 @@ res:        morseEncoder::sendMorseTimer = currentTime;       // reset the timer
     }
 }
 
+void morseEncoder::flush() {
+    while(!available()) {
+	encode();
+	redBlink();
+	delay_50();
+    }
+}
+
+
 void morseEncoder::encode() {
 
     if(sendingMorse){
 	if(fListen) {	// один раз  после каждой посылки
-	    waitForCall(0);
+	    waitForCall(0); // оно принудительно переключит на прием
 	    fListen=false;
-	    RFM_set_TX();
-	    if(Got_RSSI) goto stop;
+	    RFM_set_TX(); // вернем режим передачи
+	    if(Got_RSSI) {
+		wasCall=true;
+		sendingMorseSignalNr=0;
+		encodeMorseChar = '\0';
+		goto stop;
+	    }
 	}
     
 	if (sendingMorseSignalNr == 0 ) { // character done
-stop:
 	    encodeMorseChar = '\0';
 
 	    if(strPtr) {
 	        goto prepare; // есть продолжение
 	    } else  { // nothing to send
+stop:
                 morseEncoder::sendingMorse = false; // all finished
 		RFM_off();
 
@@ -280,7 +299,10 @@ prepare:
 	    // start sending the the character
 //	    sendingMorseSignalNr = morseSignals; // Sending signal string backwards
 	    sendingMorseSignalNr = cp - morseSignalString; // Sending signal string backwards
+	    
+	    uint8_t SREGcopy = SREG; cli(); // запрещаем прерывания чтобы не спугнуть
 	    sendMorseTimer = periods; // millis();
+	    SREG = SREGcopy;
 
 	    if (morseSignalString[0] != ' ') // start tone
 		fTone=true; // signal(true); 
