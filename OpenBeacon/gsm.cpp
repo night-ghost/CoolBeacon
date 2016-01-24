@@ -76,6 +76,7 @@ bool  GSM::begin(){
 	if(GSM::command(PSTR(""), 1000) ) break;
 
             GSM::command(PSTR("E0")); // ECHO off
+	    GSM::command(PSTR("+CFUN=1")); // work
 //            GSM::command(PSTR("+CNETLIGHT=0")); // LED off
             /*GSM::command(PSTR("+GSMBUSY=1")) && */ // not receive VOICE calls
     return  GSM::command(s_cpin_q,s_cpin_a) && // SIM ok?
@@ -86,6 +87,7 @@ bool  GSM::begin(){
 
 // закончили работу с GSM - выключим
 void GSM::end() {
+    GSM::command(PSTR("+CNETLIGHT=0")); // LED off
     GSM::command(PSTR("+CPOWD=1"),PSTR("DOWN")); //power down
 
     AltSoftSerial::end();
@@ -111,14 +113,16 @@ void GSM::initGSM(void){
 
 
 bool GSM::set_sleep(byte mode){
-    if(mode)
+    if(mode) {
+               GSM::command(PSTR("+CNETLIGHT=0")); // LED off
 	return GSM::command(PSTR("+CFUN=0")) // minimum func
 	    /*&& GSM::command(PSTR("+CSCLK=1"))*/; //  sleep
-    else {
+    } else {
 	digitalWrite(GSM_DTR,LOW); // wake up
 	delay_10();
 	digitalWrite(GSM_DTR,HIGH);
 
+	       GSM::command(PSTR("+CNETLIGHT=1")); // LED off
 	return GSM::command(PSTR("+CFUN=1")) && // work
 	       GSM::command(s_cpin_q,s_cpin_a) && // SIM ok?
 	       GSM::command(s_creg_q,s_creg_a);   // NET registered?
@@ -147,8 +151,8 @@ void GSM::readOut() {
 uint8_t GSM::command(const char* cmd, const char* answer, uint16_t time){
     readOut();
 
-//serial.print_P(PSTR("> "));
-//serial.print_P(cmd);
+serial.print_P(PSTR("> "));
+serial.print_P(cmd);
 
     gsm.print_P(PSTR("AT"));    // Send the AT command 
     gsm.println_P(cmd);    // Send the command 
@@ -179,15 +183,16 @@ uint8_t GSM::wait_answer(const char* answer, const char* answer2, unsigned int t
 
     
     do{	// this loop waits for the answer
-
+	Red_LED_ON;
 	delay_10(); // чуть подождать чтобы что-то пришло
+	Red_LED_OFF;
 
         if(gsm.available()) {	// за время ожидания что-то пришло: 38400 бод - 4800 байт/с, за 10мс придет 48 байт
     	    do {
         	char c;
         	*cp++ = c = gsm.read();
         	*cp=0;
-//serial.print(c);
+serial.print(c);
     	    } while(gsm.available()); // вычитать все что есть, а потом проверять будем
 
 	    // данные закончились, можно и проверить, если еще ответ не получен
@@ -195,7 +200,7 @@ uint8_t GSM::wait_answer(const char* answer, const char* answer2, unsigned int t
                 // check if the desired answer  is in the response of the module
                 if((result_ptr=strstr_P(response, answer)) != NULL)  { // окончательный ответ
                     has_answer = 1;
-//serial.println_P(PSTR("="));
+serial.println_P(PSTR("="));
                 } else
                 if((result_ptr=strstr_P(response, PSTR("ERROR"))) != NULL)  { // окончательная ошибка
                     has_answer = 3;

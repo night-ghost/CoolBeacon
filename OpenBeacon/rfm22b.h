@@ -45,7 +45,7 @@ void spiWriteData(uint8_t i){
   for (uint8_t n = 8; n >0; n--) {
 
     SCK_off;
-//    NOP();  времени проверки достаточно
+    NOP(); // времени проверки достаточно
     if (i & 0x80) {
         SDI_on;
     } else {
@@ -53,7 +53,7 @@ void spiWriteData(uint8_t i){
     }
     NOP();
     SCK_on;
-//    NOP();  время выполнения сдвига достаточно
+    NOP(); // время выполнения сдвига достаточно
 
     i = i << 1;
   }
@@ -323,16 +323,21 @@ void delay_300(){
     delay_100();   delay_100();   delay_100();
 }
 
-void RFM_SetPower(byte fInit, uint8_t mode, uint8_t power) {
+bool rfm_on=false;
+
+void RFM_SetPower(uint8_t mode, uint8_t power) {
 /* это нельзя делать тут ибо надо периодически переключаться на прием
 #if USE_MORZE
     morze.flush(); // дождаться окончания передачи
 #endif
 */
-    if(fInit) {
+    if(!rfm_on) {
 	initRFM();
+        rfm_on=true;
+//DBG_PRINTLN("RFM on");
         delay_50();
     }
+//DBG_PRINTVARLN(mode);
     spiWriteRegister(0x6d, power );
     spiWriteRegister(0x07, mode );
     delay_10();
@@ -340,22 +345,25 @@ void RFM_SetPower(byte fInit, uint8_t mode, uint8_t power) {
 
 
 void RFM_set_TX(){
-    RFM_SetPower(1, RF22B_PWRSTATE_TX, powerByRSSI()); // fInit, mode, power
+    RFM_SetPower(RF22B_PWRSTATE_TX, powerByRSSI()); // fInit, mode, power
 }
 
 void RFM_tx_min(){
-    RFM_SetPower(1, RF22B_PWRSTATE_TX, RFM_MIN_POWER );
+    RFM_SetPower(RF22B_PWRSTATE_TX, RFM_MIN_POWER );
 }
 
 void RFM_off(void)
 {  // TODO: SDN mangling in the future
   spiWriteRegister(0x07, RF22B_PWRSTATE_POWERDOWN);
+  rfm_on=false;
+//DBG_PRINTLN("RFM off");
+
 }
 
 
 void sendBeacon(void)
 {
-    RFM_SetPower(1, RF22B_PWRSTATE_TX, RFM_MAX_POWER);
+    RFM_SetPower(RF22B_PWRSTATE_TX, RFM_MAX_POWER);
 
 /*  if((byte)p.HighSavePower) {
     for(unsigned int i=30*BEACON_BEEP_DURATION/1000; i>0;i--) {
@@ -371,14 +379,10 @@ void sendBeacon(void)
       beacon_tone(500);
 //  }
 
-//  RFM_SetPower(0,RF22B_PWRSTATE_TX,RFM_MID_POWER);
-  spiWriteRegister(0x6d, RFM_MID_POWER);   // 4 set mid power 15mW
-  delay_10();
+  RFM_SetPower(RF22B_PWRSTATE_TX,RFM_MID_POWER);// 4 set mid power 15mW
   beacon_tone(250);
 
-//     RFM_SetPower(0,RF22B_PWRSTATE_TX, RFM_MIN_POWER);
-  spiWriteRegister(0x6d, RFM_MIN_POWER);   // 0 set min power 1mW
-  delay_10();
+  RFM_SetPower(RF22B_PWRSTATE_TX, RFM_MIN_POWER); // 0 set min power 1mW
   beacon_tone(160);
 
   RFM_off();

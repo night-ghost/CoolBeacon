@@ -116,23 +116,16 @@ morseEncoder::morseEncoder()
 
 void morseEncoder::write(char temp) {
   if (!sendingMorse && temp != '*') encodeMorseChar = temp;
+  encode();
 }
 
 void morseEncoder::write(char *cp) {
-    if (!sendingMorse){
-	char c;
-	while(c=*cp++) {
-	    if(c=='*') continue;
-
-	    encodeMorseChar = c;
-	    strPtr=cp;
-	    return;
-	}
-    }
+  strPtr=cp;
+  encode();
 }
 
 extern volatile byte inc;            // инкремент таймера 0 для обеспечения нужной задержки
-extern volatile bool fTone,fHalf;    // тон а не речь - меняем значение ШИМ самостоятельно, отсчитывая полупериоды
+extern volatile byte fTone;    // тон а не речь - меняем значение ШИМ самостоятельно, отсчитывая полупериоды
 
 volatile uint32_t periods; // вместо счета миллисекунд считаем свои прерывания
 
@@ -153,9 +146,14 @@ void doSignals() {
 
     uint16_t diff = currentTime - morseEncoder::sendMorseTimer; // надолго промахнуться не должны
 
+//DBG_PRINTVARLN(diff);
+
+
     volatile char& currSignalType = morseEncoder::morseSignalString[morseEncoder::sendingMorseSignalNr-1];
 
     bool endOfChar = morseEncoder::sendingMorseSignalNr <= 1;
+
+//DBG_PRINTVARLN(currSignalType);
     
     switch (currSignalType)  {
       case '.': // Send a dot (actually, stop sending a signal after a "dot time")
@@ -170,7 +168,7 @@ void doSignals() {
       case '-': // Send a dash (same here, stop sending after a dash worth of time)
         if (diff >= DASH_TIME)    {
 off:      fTone=false; //signal(false);		//@@@
-	  fListen=true;
+	  // fListen=true; Шумодав станции проглатывает половину если отключать передачу
           currSignalType = 'x'; // Mark the signal as sent
           goto res; //morseEncoder::sendMorseTimer = currentTime;
         }
@@ -186,6 +184,8 @@ off:      fTone=false; //signal(false);		//@@@
         } else {     // Pause between letters
           if (diff >= DASH_TIME)    {
 next:       morseEncoder::sendingMorseSignalNr--;
+	    if(morseEncoder::sendingMorseSignalNr <= 1) fListen=true;
+
 res:        morseEncoder::sendMorseTimer = currentTime;       // reset the timer
           }
         }
@@ -196,6 +196,7 @@ res:        morseEncoder::sendMorseTimer = currentTime;       // reset the timer
         if (diff > WORD_SPACE - DASH_TIME)
 	    morseEncoder::sendingMorseSignalNr--;
     }
+    
 }
 
 void morseEncoder::flush() {
@@ -211,15 +212,18 @@ void morseEncoder::encode() {
 
     if(sendingMorse){
 	if(fListen) {	// один раз  после каждой посылки
-	    waitForCall(0); // оно принудительно переключит на прием
 	    fListen=false;
+/* Шумодав станции проглатывает половину если отключать передачу */
+/*	    waitForCall(0); // оно принудительно переключит на прием
 	    RFM_set_TX(); // вернем режим передачи
 	    if(Got_RSSI) {
+DBG_PRINTLN("morze call!");
 		wasCall=true;
 		sendingMorseSignalNr=0;
 		encodeMorseChar = '\0';
 		goto stop;
 	    }
+//*/
 	}
     
 	if (sendingMorseSignalNr == 0 ) { // character done
@@ -232,8 +236,10 @@ stop:
                 morseEncoder::sendingMorse = false; // all finished
 		RFM_off();
 
+//DBG_PRINTLN("morze stop");
+
                 //HW deinit
-                TIMSK0 &= ~(1 << OCIE0B); // запретим compare interrupt
+                TIMSK0 &= ~( (1 << OCIE0B) | (1 << OCIE0A) ); // запретим compare interrupt
 	        TIMSK2 = 0;
 	        //TCCR2A = 0; его можно не сбрасывать, таймер остановлен
 	        TCCR2B = 0;
@@ -243,8 +249,10 @@ stop:
     } else { // not sending
 
 prepare:
-	if(!encodeMorseChar){ // we sending string
+	if(!encodeMorseChar && strPtr){ // we sending string
 	    char c;
+//DBG_PRINTLN("morze prepare");
+
 	    while(strPtr) {
 		c=*strPtr++;
 		if(!*strPtr){ // это последний символ
@@ -260,8 +268,9 @@ prepare:
 	    }
         }
 	if(encodeMorseChar) {
-	    // change to capital letter if not
-	    if (encodeMorseChar > 96) encodeMorseChar -= 32;
+//DBG_PRINTVARLN(encodeMorseChar);
+
+	    if (encodeMorseChar > 96) encodeMorseChar -= 32; // change to capital letter if not
   
 	    // Scan for the character to send in the Morse table
 	    byte p;
@@ -271,7 +280,6 @@ prepare:
 
 
 	    if (p >= morseTableLength) p = 0; // not found, but send a space instead
-
 
 	    // Reverse binary tree path tracing
 	    byte pNode; // parent node
@@ -296,9 +304,7 @@ prepare:
 
 	    *cp = '\0'; // close string
 
-	    // start sending the the character
-//	    sendingMorseSignalNr = morseSignals; // Sending signal string backwards
-	    sendingMorseSignalNr = cp - morseSignalString; // Sending signal string backwards
+//DBG_PRINTVARLN((char *)morseSignalString);
 	    
 	    uint8_t SREGcopy = SREG; cli(); // запрещаем прерывания чтобы не спугнуть
 	    sendMorseTimer = periods; // millis();
@@ -307,27 +313,36 @@ prepare:
 	    if (morseSignalString[0] != ' ') // start tone
 		fTone=true; // signal(true); 
 
+	    // start sending the the character
+	    sendingMorseSignalNr = cp - morseSignalString; // Sending signal string backwards
+
 	    if(!sendingMorse){ // если передача выключена
 		sendingMorse = true;	// надо включить и инициализировать железо
 	        // init HW
-	        power_timer2_enable();
 
-	        inc = 250/4; // 2000 Hz
+//DBG_PRINTLN("morze start");
+//		RFM_set_TX();
+		RFM_tx_min();
+
+	        //inc = 250/4; // 2000 Hz
+	        inc = BEEP_TONE(2500); // 2500Hz
+	        power_timer2_enable();
 
 // ШИМ частотой 16MHz / 256 = 62.5KHz (период 16мкс)
 	        TIMSK2 = (1 << OCIE2A) | (1 << TOIE2);  // Int T2 Overflow + Compare enabled
-	        TCCR2A = (1<<WGM21) | (1<<WGM20);         // Fast PWM.
+	        TCCR2A = (1<<WGM21) | (1<<WGM20);       // Fast PWM.
 	        TCCR2B = (1<<CS20);                     // CLK/1 и режим Fast PWM
-//	        OCR2A=0x0; // начальное значение компаратора
 //	        OCR0B = TCNT0;   // отложим прерывание на нужное время
-	        TIFR0  |=  1<<OCF0B;   // clear flag
-	        TIMSK0 |= (1<<OCIE0B); // разрешим compare  interrupt
+	        TIFR0  |= (1<<OCF0B)  | (1<<OCF0A);     // clear flags
+	        TIMSK0 |= (1<<OCIE0B) | (1<<OCIE0A);    // разрешим compare  interrupt
+	        OCR2A=0x0; // начальное значение компаратора
 
-		RFM_set_TX();
 	    }
 	} // new char
     } // sendingMorse
 
+
+//doSignals();
 }
 
 

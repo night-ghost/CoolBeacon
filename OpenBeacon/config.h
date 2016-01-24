@@ -52,14 +52,14 @@
 #define BUZZER_PIN_BIT (_BV(PB4))
 
 // эти ноги выведены на разъем приемника
-#define VBAT_PIN 18 // A4 (PC5)  - Vext_bat (1К на землю, 20К на батарею)
-#define VCC_PIN 18 // A4(PC5) - Vcc_bat - via magick mode
-#
+#define VBAT_PIN 18 // A4 (PC4)  - Vext_bat (1К на землю, 20К на батарею)
+#define VCC_PIN 19  // A5(PC5) - Vcc_bat - via magick mode
+
 
 
 // --------- GSM section
 
-#define USE_GSM // используем или нет
+//#define USE_GSM // используем или нет
 
 #define GSM_DTR 6
 #define GSM_RING 7

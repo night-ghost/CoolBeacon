@@ -4,7 +4,7 @@
 #include <Arduino.h>
 
 
-#define WPM 15		// Word-per-minute speed
+#define WPM 20		// Word-per-minute speed
 
 #define DOT_TIME  (1200 / WPM)       // morse dot time length in ms
 #define DASH_TIME (3 * 1200 / WPM)
@@ -22,6 +22,9 @@ class morseEncoder
 
     inline static boolean available() {
         return !sendingMorse;
+    }
+    inline static boolean busy() {
+        return sendingMorse;
     }
     void flush();
     inline static bool gotCall(){ bool t = wasCall; wasCall = 0; return t; }

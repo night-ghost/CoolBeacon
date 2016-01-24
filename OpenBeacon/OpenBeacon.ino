@@ -37,7 +37,7 @@ GNU GPLv3 LICENSE
 
 #ifdef DEBUG
   #define DBG_PRINTLN(x)     { serial.print_P(PSTR(x)); serial.println(); /* serial.flush(); */ } 
-  #define DBG_PRINTVARLN(x)  { serial.print(#x); serial.print(": "); serial.println(x);  }
+  #define DBG_PRINTVARLN(x)  { serial.print(#x); serial.print(": "); serial.println(x); /* serial.flush(); */ }
   #define DBG_PRINTVAR(x)    { serial.print(#x); serial.print(": "); serial.print(x); serial.print(" ");  }
 #else
   #define DBG_PRINTLN(x)     {}
@@ -204,35 +204,44 @@ uint16_t getExtVoltage(){
 
 
 // vcc in mv
+// 10k на землю, 15к на +
 uint16_t readVCC() {
 
     adc_setup();
 
-/*  это вообще убрать надо, оставив чтение питания только "магическим" методом
 //    pinMode(12, 1) ; // 12 (PB3) MOSI - зачем его на вывод - ???
 //    digitalWrite(12,0);
 
-    long sum=0;
-    for(byte i=0; i<50; i++){
+#define VCC_AVGA 64
+
+    uint32_t sum=0;
+    for(byte i=0; i<VCC_AVGA; i++){
         sum += analogRead(VCC_PIN);
         delay_1();
     }
 //    pinMode(12, 0); // PB3 на ввod
- 
-    sum /= 50;
-    sum *= 33;
-    sum /= 255;
-    
-    if(sum < 26) return 0;
-    if(sum > 34) return sum;
-*/
+//    DBG_PRINTVARLN(sum);
+//delay(1000);
+
+    sum *= 416;
+     sum /= VCC_AVGA;
+//DBG_PRINTVARLN(sum);
+//delay(1000);
+    sum /= 51;
+
+//DBG_PRINTVARLN(sum);//33032 = 4200
+//delay(1000);
+//    if(sum < 26) return 0;
+    if(sum > 3200) return sum; // что-то померялось
+//*/
+
     ADMUX = 0x4e; //AVCC with external capacitor at AREF pin, 1.1v as meashured
     delay_1();
+    sum=0;
+    
+#define VCC_AVGB 100
 
-#define VCC_AVG 100
-
-    uint32_t sum=0;
-    for(byte i=VCC_AVG; i>0; i--){
+    for(byte i=VCC_AVGB; i>0; i--){
         delay_1();
     
 	ADCSRA |= 1 << ADSC; // start conversion
@@ -247,9 +256,7 @@ uint16_t readVCC() {
 	sum+=  v;
     }
 
-    return (118645531 * VCC_AVG / 100) / sum; // in mv, calibrated
-    
-
+    return (118645531UL /* * VCC_AVGB / 100 */ ) / sum; // in mv, calibrated
 }
 
 
@@ -269,6 +276,10 @@ byte powerByRSSI() {
 
 void sendVOICE(char *string, byte beeps)
 {
+
+//DBG_PRINTLN("say");
+//DBG_PRINTVARLN(string);
+
   if(!voiceOnBuzzer) {
 #if USE_MORZE
     morze.flush(); // дождаться окончания передачи
@@ -548,7 +559,7 @@ void Delay_listen(){
 
 byte calibrate(){
  
-     RFM_tx_min(); // RFM_SetPower(1, RF22B_PWRSTATE_TX, RFM_MIN_POWER );
+     RFM_tx_min(); // RFM_SetPower(RF22B_PWRSTATE_TX, RFM_MIN_POWER );
 
      uint16_t min=10000; // min
       
@@ -746,10 +757,14 @@ void beepOnBuzzer_333(){
 
 void listen_quant(){
     preambleDetected=0;
-    RFM_SetPower(1,RF22B_PWRSTATE_RX,0);
+    RFM_SetPower(RF22B_PWRSTATE_RX,0);
     Delay_listen();
     tmpRSSI = spiReadRegister(0x26); // считать RSSI независимо от наличия вызова
+#if USE_MORZE
+    if(!morze.busy())  RFM_off();
+#else
     RFM_off();
+#endif
     wdt_reset();
 }
 
@@ -1302,7 +1317,7 @@ void setup(void) {
 
     uint16_t vcc=readVCC();
 
-//DBG_PRINTVARLN(vcc);
+DBG_PRINTVARLN(vcc);
 
     if(vcc < VCC_LOW_THRESHOLD) {
 
@@ -1370,7 +1385,7 @@ void setup(void) {
 //    else
 
 //{    beaconHorn(); 
-    RFM_tx_min(); // RFM_SetPower(1,RF22B_PWRSTATE_TX, RFM_MIN_POWER ); 
+    RFM_tx_min(); // RFM_SetPower(RF22B_PWRSTATE_TX, RFM_MIN_POWER ); 
     for(byte i=3;i>0;i--) {
         Red_LED_ON
         beacon_tone_150(400);
@@ -1391,16 +1406,20 @@ void setup(void) {
     }
 
 #endif
-
-#if USE_MORZE
-    morze.write("UA3AYR test beacon 54.54");
-    morze.flush(); // дождаться окончания передачи
-#endif
     RFM_off();
 
 
+#if USE_MORZE && 0
+//DBG_PRINTLN("morze begin");
+    morze.write("cq CQ test beacon 54.54");
+//    morze.write("SOS 4");
+    morze.flush(); // дождаться окончания передачи
+//DBG_PRINTLN("morze done");
+#endif
+
+
 //voiceOnBuzzer = true; 
-//sendVOICE("0123456789:#.",  0);
+//sendVOICE("0123456789:#. *",  0);
 //voiceOnBuzzer = false;
 
     if(vcc){

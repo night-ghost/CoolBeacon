@@ -705,28 +705,46 @@ uint16_t adpcmDec(uint8_t sample_in, uint16_t sample_prev) {
 
 volatile byte fInt, voicePWM; // флаг прерывания и новое значение ШИМ
 volatile byte inc;            // инкремент таймера 0 для обеспечения нужной задержки
-volatile bool fTone,fHalf;    // тон а не речь - меняем значение ШИМ самостоятельно, отсчитывая полупериоды
+volatile byte fTone;          // тон а не речь - меняем значение ШИМ самостоятельно, отсчитывая полупериоды
+volatile byte fHalf;          // счет полупериодов
 
 ISR(TIMER0_COMPA_vect) {
     OCR0A = TCNT0 + inc; // отложим следующее прерывание
 
     if(fTone) {	//		если генерируем тон
-	OCR2A = fHalf?0x30:0xd0; // то новое значение задаем самостоятельно
-	fHalf=!fHalf; 		// другой полупериод
-    } else
+	OCR2A = (++fHalf & 1)?0x30:0xd0; // то новое значение задаем самостоятельно
+//	fHalf=!fHalf; 		// другой полупериод
+    } else {
 	OCR2A = voicePWM;        // записать новое значение ШИМ
+    }
     fInt = 1; 		// было прерывание
 }
 
 // используется ТОЛЬКО изнутри формирования звука при включенном таймере
 
-#define BEEP_TONE(freq) (1000000 / freq / 2 /* 2 periods */ / 4 /* 4 ms each tick */)
+#define BEEP_TONE(freq) ((((1000000 + freq/2)/ freq +1 ) / 2 /* 2 periods */+2) / 4 /* 4 ms each tick */)
 
 void beep(unsigned int t){
+#if 0
+    byte a=0x30,c=0xd0;
+
+    uint32_t dt=millis()+t;
+
+    while(dt>millis()){
+    //for(byte i=255; i!=0; i--){
+        OCR2A=a;
+        delayMicroseconds(180);
+        OCR2A=c;
+        delayMicroseconds(180);
+    }
+#else
     inc=BEEP_TONE(2500); // 2500Hz
+//    inc=180/4;
+//DBG_PRINTVARLN(inc);
     fTone=true;
     delay(t); 
     fTone=false;
+#endif
 }
 
 void beep(){
@@ -751,7 +769,7 @@ void _sendVOICE(char *s, byte beeps){
     power_timer2_enable();
 
 // ШИМ частотой 16MHz / 256 = 62.5KHz (период 16мкс), значит одно значение ШИМ звучит 155/16 ~= 10 периодов
-    TIMSK2 = (1 << OCIE2A) | (1 << TOIE2);  // Int T2 Overflow + Compare enabled
+    TIMSK2 = (1<<OCIE2A) | (1<<TOIE2);  // Int T2 Overflow + Compare enabled
     TCCR2A = (1<<WGM21) | (1<<WGM20);         // Fast PWM 
     TCCR2B = (1<<CS20);                     // CLK/1 и режим Fast PWM
     OCR2A=0x0; // начальное значение компаратора
@@ -759,75 +777,78 @@ void _sendVOICE(char *s, byte beeps){
     
 //    uint16_t dly = (( p.SpeechRate + 1400 ) * 155L ) / 1500; // 155uS default 
     uint16_t dly = (( p.SpeechRate + 1400 ) * 220L ) / 1500; // 220uS  - время расчета не входит в задержку
+//    inc = dly/4; // инкремент таймера 0 по 4 мкс - портится от beep
     
+    TIFR0  |= (1<<OCF0A);   // clear flag
+    TIMSK0 |= (1<<OCIE0A);  // разрешим compare  interrupt - все время формирования голоса пусть тикает
 
-    TIFR0  |=  1<<OCF0A;   // clear flag
-    TIMSK0 |= (1<<OCIE0A); // разрешим compare  interrupt - все время формирования голоса пусть тикает
+//beep(500);
 
+//DBG_PRINTLN("beep off");
+//delay(2500);
+//DBG_PRINTLN("delay off");
 
-//    if(beeps){
-	for(; beeps>0; beeps--){
-	    beep();
-	    delay_100();
-	}
-//    }
+    for(; beeps>0; beeps--){
+        beep();
+        delay_100();
+    }
 
-  for(;;){ 
-    delay(p.SpeechRate); // задержка ДО проверки на конец строки дабы договорить успела и пауза после последней цифры была
+    for(;;){
+        delay(p.SpeechRate); // задержка ДО проверки на конец строки дабы договорить успела и пауза после последней цифры была
 
-    byte c= *s++; // byte from string
-    if(c==0) break;
+        byte c= *s++; // byte from string
+        if(c==0) break;
 
-    redBlink(); 
+        redBlink(); 
 
-    byte n=c - '0';
+        byte n=c - '0';
 #if !defined(SKIP_STAR)
-    if(n<=10){ // плюс еще сэмпл с кодом 3A - ":"
+        if(n<=10){ // плюс еще сэмпл с кодом 3A - ":"
 #else
-    if(n<10){ 
+        if(n<10){ 
 #endif
-	wav=(byte *)pgm_read_word(&samples[n]);
-	len=        pgm_read_word(&sample_len[n]);
-    } else {
-	if(c == '#' ) {		// разделяет широту и долготу
-	    beep(); delay_50(); beep();
-	} else if(c=='.') {	// точка, разделяет целое и дробное
-	    beep();
-	} else if(c=='*') {	// признак краша
-	    beep(500);
-	} 
-	delay_300(); //delay(p.SpeechRate * 3); и так сойдет зато компактнее
-	continue;
-    }
+	    wav=(byte *)pgm_read_word(&samples[n]);
+	    len=        pgm_read_word(&sample_len[n]);
+        } else {
+	    if(c == '#' ) {		// разделяет широту и долготу
+	        beep(); delay_50(); beep();
+	    } else if(c=='.') {	// точка, разделяет целое и дробное
+	        beep();
+	    } else if(c=='*') {	// признак краша
+	        beep(500);
+	    } 
+	    delay_300(); //delay(p.SpeechRate * 3); и так сойдет зато компактнее
+	    continue;
+        }
 
-    inc = dly/4; // инкремент таймера 0 по 4 мкс - портится от beep
+        inc = dly/4; // инкремент таймера 0 по 4 мкс - портится от beep
     
-//    voicePWM=0; - без него лучше
-    // зачем мешать естественному порядку вещей?! // OCR0A = TCNT0 + inc;   // отложим прерывание на нужное время для определенности
-    // таймер тикает все время так что просто дождемся прерывания
-    fInt=0; while(!fInt);	// wait for interrupt
-    for(;len>0;len--) {
-        uint8_t s=pgm_read_byte(wav++);
+//	   voicePWM=0; - без него лучше
+        // зачем мешать естественному порядку вещей?! // OCR0A = TCNT0 + inc;   // отложим прерывание на нужное время для определенности
+        // таймер тикает все время так что просто дождемся прерывания
+        fInt=0; while(!fInt);	// wait for interrupt
+        for(;len>0;len--) {
+            uint8_t s=pgm_read_byte(wav++);
 
-        sample_prev = adpcmDec(s,    sample_prev);
-        wave((int)sample_prev);
+            sample_prev = adpcmDec(s,    sample_prev);
+            wave((int)sample_prev);
 
-        sample_prev = adpcmDec(s>>4, sample_prev);
-        wave((int)sample_prev);
-    }
+            sample_prev = adpcmDec(s>>4, sample_prev);
+            wave((int)sample_prev);
+	}
 //    voicePWM=0; // убрать ШИМ на время паузы, а не оставлять последнее значение - так хуже
 //    fInt=0;   while(!fInt);	 // догенерить остаток
     //delay_50(); // пауза между цифрами есть и в начале
-  }
+    }
 
-  TIMSK0 &= ~(1 << OCIE0A); // запретим compare interrupt
+    TIMSK0 &= ~(1 << OCIE0A); // запретим compare interrupt
 
-  TIMSK2 = 0; // выключить таймер
+    TIMSK2 = 0; // выключить таймер
 //  TCCR2A = 0; его можно не сбрасывать, таймер все равно остановлен
-  TCCR2B = 0;
+    TCCR2B = 0;
  
-  BUZZER_LOW; // могли говорить в пищальник и забыть
-  power_timer2_disable();
+    BUZZER_LOW; // могли говорить в пищальник и забыть
+    power_timer2_disable();
 
 }
 
