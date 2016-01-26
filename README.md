@@ -1,16 +1,22 @@
 # CoolBeacon
 All-in-One beacon and tracker: GSM, Radio, voice, flashlamp
 
+
 Based on:
-   binary code analysys of tBeacon 0.54
+   binary code analysys of tBeacon 0.54 (voice samples)
+   
    OpenLRS Beacon Project (tBeacon late)  by Konstantin Sbitnev Version 0.1
-    wihch based on
+       wihch based on
+    
    openLRSngBeacon by Kari Hautio - kha @ AeroQuad/RCGroups/IRC(Freenode)/FPVLAB etc.
+   
    Narcoleptic - A sleep library for Arduino * Copyright (C) 2010 Peter Knight (Cathedrow)
-   OpenTinyRX by Baychi soft 2013
+   
+   OpenTinyRX by Baychi soft 2013 
 
   ************************************.
-   Поисковый маяк на базе приемника HawkEye / OrangeRx Open LRS 433MHz 9Ch Receiver
+   "Все-в одном" Поисковый маяк на базе приемника HawkEye / OrangeRx Open LRS 433MHz 9Ch Receiver
+   Радио, GSM, голос, вспышка
   ************************************
 
 Отличия от tBeacon:
@@ -25,7 +31,7 @@ Based on:
 * при дизарме в радиусе менее 10 метров от точки взлета маяк не срабатывает (кроме вызывного коий работает всегда)
 * при зафиксированном краше таймерный маяк включается сразу же, без задержки (если разрешен)
 * умеет управлять GSM-модулем SIM800 и отправить SMS с координатами при аварийной посадке (и в воздухе при аварийном снижении или сработке парашюта)
-* управление парашютной системой спасения
+* управление парашютной системой спасения (серво на CHUTE_PIN)
 * умеет управлять газоразрядной фотовспышкой (STROBE_PIN)
 * может передавать координаты морзянкой
 * TODO:? передавать точки на сервер по мере движения, с прореживанием и контролем расстояния
@@ -39,5 +45,5 @@ Based on:
 * нет управления форматом координат из конфигуратора - задается при сборке
 * (почти) нет управления ногой подключения пищалки из конфигуратора - задается при сборке
 * нет режима HighSavePower
-* нет произнесения двоеточия, вместо этого двойной beep
+* нет произнесения двоеточия, вместо этого двойной "beep"
 

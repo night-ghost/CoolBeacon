@@ -13,6 +13,29 @@ unsigned int sqrt32(unsigned long n);
 extern GSM gsm;
 #endif
 
+
+void chute_release(){
+    uint32_t dt=millis() + 2000; // 2 секунды серва будет тянуть
+
+    uint8_t bit = digitalPinToBitMask(CHUTE_PIN); // move calculations from critical section
+    uint8_t port = digitalPinToPort(CHUTE_PIN);
+    volatile uint8_t *out = portOutputRegister(port);
+
+//#define OUT_PORT(val) if (val == LOW) { *out &= ~bit; } else { *out |= bit; }
+#define SET_LOW()   *out &= ~bit
+#define SET_HIGH()  *out |= bit
+
+    while(dt>millis()){
+//	noInterrupts();		// pulse widh disabled interrups for accuracy
+	SET_HIGH(); 		//digitalWrite(PWM_out_pin,1);
+	delayMicroseconds(2000);
+	SET_LOW();		//digitalWrite(PWM_out_pin,0);
+	delay_10();
+//	interrupts();
+    }
+}
+
+
 void chute_start() { // сработка парашюта
     DBG_PRINTLN("chute on");
 
@@ -20,6 +43,7 @@ void chute_start() { // сработка парашюта
 
     if( (mav_baro_alt - baro_alt_start) > CHUTE_MIN_ALT){ // достаточная высота
 	// собственно команда на раскрытие
+	chute_release();
     }
 
 
@@ -33,6 +57,20 @@ void chute_start() { // сработка парашюта
 
 }
 
+
+void chute_init(){
+    pinMode(CHUTE_PIN, OUTPUT);
+    digitalWrite(CHUTE_PIN,LOW);
+    
+/*
+    PWM range - 1000..2000 uS
+    timer step - 4uS so 250..500  oops...
+
+*/
+
+//    sbi(TCCR0A, COM0B1);	// connect pwm to pin on timer 0, channel B
+//    OCR0B = val; 		// set pwm duty
+}
 
 /* данные с борта
 

@@ -296,11 +296,13 @@ void sendVOICE(char *string, byte beeps)
 
 // обработчик прерывания по получению вызова
 //void RFM22B_Int()
+//*
 #if IRQ_interrupt == 0
 ISR(INT0_vect)
 #else
 ISR(INT1_vect)
 #endif
+//*/
 {
   byte reg=spiReadRegister(0x03); // bye-bye
   reg=spiReadRegister(0x04);
@@ -1291,7 +1293,8 @@ void setup(void) {
     TCCR0A &= ~( (1<<WGM01) | (1<<WGM00) );
 
 
-//    attachInterrupt(IRQ_interrupt, RFM22B_Int, FALLING); ISR(INT0_vect) - ~150 bytes
+//    attachInterrupt(IRQ_interrupt, RFM22B_Int, FALLING); // ISR(INT0_vect) - ~150 bytes
+//*
 #if IRQ_interrupt == 0
     EICRA = (EICRA & ~((1 << ISC00) | (1 << ISC01))) | (FALLING << ISC00);
     EIMSK |= (1 << INT0);
@@ -1299,7 +1302,7 @@ void setup(void) {
     EICRA = (EICRA & ~((1 << ISC10) | (1 << ISC11))) | (FALLING << ISC10);
     EIMSK |= (1 << INT1);
 #endif
-
+//*/
     sei();
 
 #if defined(DEBUG)
@@ -1416,8 +1419,6 @@ DBG_PRINTVARLN(vcc);
     morze.flush(); // дождаться окончания передачи
 //DBG_PRINTLN("morze done");
 #endif
-
-
 //voiceOnBuzzer = true; 
 //sendVOICE("0123456789:#. *",  0);
 //voiceOnBuzzer = false;
@@ -1477,7 +1478,7 @@ bool NOINLINE nowIsTime(uint32_t& t){
 void loop(void) {
 
     unsigned long timeStart=millis() + sleepTimeCounter; // время бодрствования плюс время сна - запомним время входа в цикл
-    unsigned int frac;
+//    unsigned int frac;
 
     wdt_enable(WDTO_8S);
 

@@ -52,14 +52,14 @@
 #define BUZZER_PIN_BIT (_BV(PB4))
 
 // эти ноги выведены на разъем приемника
-#define VBAT_PIN 18 // A4 (PC4)  - Vext_bat (1К на землю, 20К на батарею)
-#define VCC_PIN 19  // A5(PC5) - Vcc_bat - via magick mode
+#define VBAT_PIN 18 // A4 (PC4) - Vext_bat (1К на землю, 20К на батарею)
+#define VCC_PIN 19  // A5 (PC5) - Vcc_bat  (10к на землю, 15К на батарею) или via magick mode
 
 
 
 // --------- GSM section
 
-//#define USE_GSM // используем или нет
+#define USE_GSM // используем или нет
 
 #define GSM_DTR 6
 #define GSM_RING 7
@@ -76,11 +76,14 @@
 
 // -------  Morze section
 
-#define USE_MORZE true
-
+//#define USE_MORZE true
 // other settings in morseEnDecoder.h
 
+
+
 //-------- Chute section
+
+#define CHUTE_PIN 5 // нога 9, ШИМ
 
 #define CHUTE_ON_COUNT 25 // сработка при количестве ошибок: 5 пакетов в секунду, 5 секунд
 #define CHUTE_MIN_ALT 700 // минимальная высота срабатывания парашюта, см
