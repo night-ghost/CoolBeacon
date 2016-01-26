@@ -4,15 +4,22 @@ All-in-One beacon and tracker: GSM, Radio, voice, flashlamp
 
 Based on:
    binary code analysys of tBeacon 0.54 (voice samples)
+   
    OpenLRS Beacon Project (tBeacon late)  by Konstantin Sbitnev Version 0.1
        wihch based on
+       
    openLRSngBeacon by Kari Hautio - kha @ AeroQuad/RCGroups/IRC(Freenode)/FPVLAB etc.
+   
    Narcoleptic - A sleep library for Arduino * Copyright (C) 2010 Peter Knight (Cathedrow)
+   
    OpenTinyRX by Baychi soft 2013 
 
   ************************************
+  
    "Все-в одном" Поисковый маяк на базе приемника HawkEye / OrangeRx Open LRS 433MHz 9Ch Receiver
+   
    Радио, GSM, голос, вспышка
+   
   ************************************
 
 Отличия от tBeacon:
