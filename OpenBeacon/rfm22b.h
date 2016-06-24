@@ -27,15 +27,26 @@ static inline boolean getBit(byte Reg, byte whichBit) {
 
 // если RFMка выключена то дерготня SDI ей не мешает, так что не тратим время на проверку
 ISR(TIMER2_COMPA_vect) {
+
+#ifdef DO_DTMF_OFF
+    DO_DTMF_OFF;
+#else
     SDI_off;
+#endif
 
     if(voiceOnBuzzer) BUZZER_HIGH;
 }
 
 ISR(TIMER2_OVF_vect)  {
+    
+#ifdef DO_DTMF_ON
+    DO_DTMF_ON;
+#else
     SDI_on;
+#endif
 
     if(voiceOnBuzzer) BUZZER_LOW;
+    
 }
 
 
@@ -323,7 +334,6 @@ void delay_300(){
     delay_100();   delay_100();   delay_100();
 }
 
-bool rfm_on=false;
 
 void RFM_SetPower(uint8_t mode, uint8_t power) {
 /* это нельзя делать тут ибо надо периодически переключаться на прием
@@ -331,9 +341,9 @@ void RFM_SetPower(uint8_t mode, uint8_t power) {
     morze.flush(); // дождаться окончания передачи
 #endif
 */
-    if(!rfm_on) {
+    if(!lflags.rfm_on) {
 	initRFM();
-        rfm_on=true;
+        lflags.rfm_on=true;
 //DBG_PRINTLN("RFM on");
         delay_50();
     }
@@ -354,8 +364,9 @@ void RFM_tx_min(){
 
 void RFM_off(void)
 {  // TODO: SDN mangling in the future
-  spiWriteRegister(0x07, RF22B_PWRSTATE_POWERDOWN);
-  rfm_on=false;
+  if(lflags.rfm_on)
+    spiWriteRegister(0x07, RF22B_PWRSTATE_POWERDOWN);
+  lflags.rfm_on=false;
 //DBG_PRINTLN("RFM off");
 
 }

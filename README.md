@@ -1,9 +1,8 @@
 # CoolBeacon
 All-in-One beacon and tracker: GSM, Radio, voice, flashlamp
-
+(english description late)
 
 Based on:
-   binary code analysys of tBeacon 0.54 (voice samples)
    
    OpenLRS Beacon Project (tBeacon late)  by Konstantin Sbitnev Version 0.1
        wihch based on
@@ -13,6 +12,8 @@ Based on:
    Narcoleptic - A sleep library for Arduino * Copyright (C) 2010 Peter Knight (Cathedrow)
    
    OpenTinyRX by Baychi soft 2013 
+
+   binary code analysys of tBeacon 0.54 (voice samples)
 
   ************************************
   
@@ -35,18 +36,70 @@ Based on:
 * при зафиксированном краше таймерный маяк включается сразу же, без задержки (если разрешен)
 * умеет управлять GSM-модулем SIM800 и отправить SMS с координатами при аварийной посадке (и в воздухе при аварийном снижении или сработке парашюта)
 * управление парашютной системой спасения (серво на CHUTE_PIN)
-* умеет управлять газоразрядной фотовспышкой (STROBE_PIN)
+* умеет управлять газоразрядной фотовспышкой (STROBE_PIN), срабатывать будет один раз на вызов
 * может передавать координаты морзянкой
-* TODO:? передавать точки на сервер по мере движения, с прореживанием и контролем расстояния
-* GPL :)
+* TODO:? передавать точки на сервер по мере движения, с прореживанием и контролем расстояния 
+    (нужность сомнительна, а GSM передатчик на борту не сильно полезен остальной электронике)
+* GPLv3 :)
 
 удалено:
 * нет поддержки прямого подключения к GPS
-* нет автораспознавания формата - всегда MAVlink
-* нет автораспознавания скорости - MAVlink всегда на 57600
+* нет автораспознавания формата - всегда MAVlink/UAVtalk/MWII
 * нет поддержки позывного морзянкой (хотя если кому надо то можно легко сделать, причем с кодированием на борту)
 * нет управления форматом координат из конфигуратора - задается при сборке
 * (почти) нет управления ногой подключения пищалки из конфигуратора - задается при сборке
 * нет режима HighSavePower
 * нет произнесения двоеточия, вместо этого двойной "beep"
 
+
+***** ENGLISH **********************************************************************************************
+
+"All-in-one" Search beacon on the basis of  HawkEye / OrangeRx Open LRS 433MHz 9Ch Receiver (https://github.com/openLRSng/openLRSngWiki/wiki/Hardware-Guide)
+
+   Radio, GSM, voice, flashlight
+
+  ************************************
+
+Differences from tBeacon:
+
+* Understands *only* MAVlink and is designed for direct connection to the controller APM / PixHawk
+* When connected to the battery it no saves energy and gets through MAVlink not only coordinates but other information
+* Coordinates before storing the EEPROM are filtered by the minimum distance - why write standing still?
+* Knows how to "talk" not only to the radio but to buzzer, one can move all preflight "talks" to it
+* Voice formed by a timer rather than delay() - so is a much cleaner
+* In all operating power radio is automatically adjusted according to the strength of the received signal
+* After arm and up to disarm radio does not turn on at all - so as not to interfere
+* When disarming at a radius less than 10 meters from the point of takeoff the beacon does not turns on (except for the call mode which always works)
+* After crash timed beacon activated immediately, without delay (if enabled)
+* Beacon is able to operate GSM-module SIM800, and send an SMS with the coordinates of a crash landing (and in the air in case of emergency or decline triggered the parachute)
+* Control of the parachute rescue system (servo on CHUTE_PIN)
+* Can operate gas discharge flashlight (STROBE_PIN) which flashes once a call
+* Can transmit the coordinates in Morse code (for radio men)
+* TODO:(?) transfer coordinate points to the server as it moves, with thinning and controlled distance.
+    (questionable necessity because GSM transmitter on board is not very helpful for the rest of the electronics)
+* GPLv3 :)
+
+Removed:
+* No support for a direct connection to the GPS
+* No Auto protocol - always MAVlink/UAVtalk/MWII
+* No support callsign Morse code (although if anyone should something can be done easily and with the encoding on board)
+* There is no control the format of coordinates of the configurator - is given in the compile time
+* (Almost) do not have control of the pin connecting buzzer in configurator - is given in compile time
+* No HighSavePower mode
+* There is no word "pinnacle" instead a double "beep"
+
+
+v0.9
+Config Tool is working!
+
+
+
+to compile:
+
+
+
+then add 
+
+#define SKIP_FLOAT
+
+to SingleSerial/BetterSteam.h

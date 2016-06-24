@@ -28,12 +28,14 @@ http://arduino.ua/ru/guide/ArduinoGSMShield
 extern SingleSerial serial;
 
 
-
-
 #include "Arduino.h"// Get the common arduino functions
 
 #include "config.h"
 #include "gsm.h"
+
+
+//#define GSM_DEBUG 1
+//#define USSD_DEBUG 1
 
 extern GSM gsm;
 extern void delay_300();
@@ -43,6 +45,7 @@ extern void delay_10();
 extern void delay_1();
 
 char GSM::response[RESPONCE_LENGTH];
+byte GSM::lastError;
 
 static const char PROGMEM s_cpin_q[]="+CPIN?";
 static const char PROGMEM s_creg_q[]="+CREG?";
@@ -50,48 +53,127 @@ static const char PROGMEM s_cpin_a[]="CPIN: READY";
 static const char PROGMEM s_creg_a[]="CREG: 0,1";
 
 static const char PROGMEM s_ok[]="OK";
+char * result_ptr, * result2_ptr;
+
 
 GSM::GSM(){
 
 }
 
 byte GSM::_write(uint8_t c){
-    return gsm.write(c);
+    return gsm.write_S(c);
 }
 
 void delay_1000(){
     delay(1000);
 }
 
+
+bool cregWait(){
+    static const PROGMEM char patt_creg[]="CREG: 0,";
+
+    byte nTry=10;
+
+    while(nTry-- >0){
+         byte f= GSM::command(s_creg_q, s_ok, patt_creg);   // NET registered?
+	// handle CREG: 0,2
+
+#ifdef GSM_DEBUG
+//serial.printf_P(PSTR("#+CREG? result2=%c\n"),*(result2_ptr+sizeof(patt_creg)-1));
+#endif	
+	if(!f) return false; // command failed
+
+        switch(*(result2_ptr+sizeof(patt_creg)-1)){
+    	case '1':	// registered or roaming
+    	case '5':
+    	     break; 
+    	     
+        case '0':	//  not registered but searching
+        case '2':
+            delay_300();
+    	    continue; 
+        
+        case '3':	//denied
+            return false; 
+            
+        default:
+    	    delay_1000();// will wait
+    	    continue;
+        }
+        break;// all loop done by continue;
+    }
+    return true;
+}
+
+
+void syncSpeed() {
+    for(byte i=25;i!=0; i--)			// speed negotiation
+        if(GSM::command(PSTR(""), 1000) ) break;
+
+}
+
+void GSM::turnOff(){
+    power_timer1_enable();
+    AltSoftSerial::begin(GSM_SPEED);
+    //digitalWrite(GSM_EN,LOW);
+    syncSpeed();
+    GSM::command(PSTR("E0")); // ECHO off
+    end();
+}
+
+
 bool  GSM::begin(){
     power_timer1_enable();
     AltSoftSerial::begin(GSM_SPEED);
 
-    digitalWrite(GSM_EN,LOW);
+    byte try_count=10;
+    byte f=0;
+
+    digitalWrite(GSM_EN,LOW);	// this is RESET
     delay_300();
     digitalWrite(GSM_EN,HIGH);
     delay_1000();
 
-    for(byte i=15;i!=0; i--)
-	if(GSM::command(PSTR(""), 1000) ) break;
+    do {
 
-            GSM::command(PSTR("E0")); // ECHO off
-	    GSM::command(PSTR("+CFUN=1")); // work
-//            GSM::command(PSTR("+CNETLIGHT=0")); // LED off
-            /*GSM::command(PSTR("+GSMBUSY=1")) && */ // not receive VOICE calls
-    return  GSM::command(s_cpin_q,s_cpin_a) && // SIM ok?
-	    GSM::command(s_creg_q,s_creg_a) &&   // NET registered?
-	    GSM::command(PSTR("+CCALR?"),PSTR("CCALR: 1"));   // CALL enabled?
+	syncSpeed();
+
+        GSM::command(PSTR("E0")); // ECHO off
+        GSM::command(PSTR("+CFUN=1")); // work  - +CFUN=1,1 to reset
+//                GSM::command(PSTR("+CNETLIGHT=0")); // LED off
+        /*GSM::command(PSTR("+GSMBUSY=1")) && */ // not receive VOICE calls
+    
+        GSM::command(PSTR("+CSCB=1")); // запрет широковещательных уведомлений
+                
+        f=      GSM::command(s_cpin_q,s_cpin_a); // SIM ok?
+
+	// http://we.easyelectronics.ru/blog/part/369.html
+	// AT+CMGF
+	// AT+CSCB=1
+	// AT+GSMBUSY=1
+	// AT+CLIP=1 
+
+        if(f) f=cregWait();
+        if(f) f=GSM::command(PSTR("+CCALR?"),PSTR("CCALR: 1"));   // CALL enabled?
+        
+        if(f) break; // all OK
+
+        GSM::command(PSTR("+CFUN=1,1")); // reset
+        for(byte i=5;i>0;i--)
+            delay_1000();	// delay 5 seconds
+        
+    } while(try_count-- >0); /// максимальное время ожидания при отсутствии сети - 10 раз по (10 секунд плюс время ожидания команды), около 3 минут
+
+    return f;
 }
 
 
 // закончили работу с GSM - выключим
 void GSM::end() {
-    GSM::command(PSTR("+CNETLIGHT=0")); // LED off
-    GSM::command(PSTR("+CPOWD=1"),PSTR("DOWN")); //power down
+    GSM::command(PSTR("+CNETLIGHT=0"),1000); // LED off
+    GSM::command(PSTR("+CPOWD=1"),PSTR("DOWN"),1000); //power down
 
     AltSoftSerial::end();
-
     power_timer1_disable();
 }
 
@@ -122,25 +204,30 @@ bool GSM::set_sleep(byte mode){
 	delay_10();
 	digitalWrite(GSM_DTR,HIGH);
 
-	       GSM::command(PSTR("+CNETLIGHT=1")); // LED off
-	return GSM::command(PSTR("+CFUN=1")) && // work
+	       GSM::command(PSTR("+CNETLIGHT=1")); // LED on
+	       
+	return GSM::command(PSTR("+CFUN=1")) && // work - +CFUN=1,1 to reset
 	       GSM::command(s_cpin_q,s_cpin_a) && // SIM ok?
-	       GSM::command(s_creg_q,s_creg_a);   // NET registered?
+	       cregWait();   // wait for NET registered
     }
 
 }
 
 
 
-void GSM::readOut() {
+void GSM::readOut() { // Clean the input buffer from last answer and unsolicit answers
     char c;
-    if( gsm.available()) {
-//serial.print_P(PSTR("< "));
+    while( gsm.available_S()) {
+#ifdef GSM_DEBUG
+serial.print_P(PSTR("< "));
+#endif
 	while( gsm.available()) {
-	    c=gsm.read();    // Clean the input buffer from last answer and unsolicit answers
-//serial.print(c);
-	    delay_10();
+	    c=gsm.read_S();    
+#ifdef GSM_DEBUG
+serial.print(c);	    
+#endif
 	}
+	delay_10(); // wait for next char
     }
 
 }
@@ -148,20 +235,32 @@ void GSM::readOut() {
 
 // отправка AT-команд
 // usage  command(PSTR("+SAPBR=3,1,\"CONTYPE\",\"GPRS\""), [PSTR("OK")], [10000]);
-uint8_t GSM::command(const char* cmd, const char* answer, uint16_t time){
+uint8_t GSM::command(const char* cmd, const char* answer, const char* answer2, uint16_t time){
     readOut();
 
-serial.print_P(PSTR("> "));
-serial.print_P(cmd);
+#ifdef GSM_DEBUG
+serial.printf_P(PSTR("# want: %S\n"),answer);
+serial.print_P(PSTR("#> AT"));
+serial.println_P(cmd);
+#endif
 
     gsm.print_P(PSTR("AT"));    // Send the AT command 
     gsm.println_P(cmd);    // Send the command 
 
-    return wait_answer(answer, time)==1; // 10 sec
+    return wait_answer(answer, answer2, time)==1; // 10 sec
+}
+
+uint8_t GSM::command(const char* cmd, const char* answer, const char* answer2){
+    return GSM::command(cmd, answer, answer2,  10000); // 10s default wait time
+}
+
+
+uint8_t GSM::command(const char* cmd, const char* answer, uint16_t time){
+    return GSM::command(cmd, answer, NULL, time);
 }
 
 uint8_t GSM::command(const char* cmd, const char* answer){
-    return GSM::command(cmd, answer, 10000);
+    return GSM::command(cmd, answer, 10000); // 10s default wait time
 }
 
 uint8_t GSM::command(const char* cmd){
@@ -172,39 +271,50 @@ uint8_t GSM::command(const char* cmd, uint16_t time){
     return GSM::command(cmd, s_ok, time);
 }
 
-char * result_ptr, * result2_ptr;
+
 
 uint8_t GSM::wait_answer(const char* answer, const char* answer2, unsigned int timeout){
     char * cp = response;
     unsigned long deadtime = millis() + timeout;
     char has_answer=0;
+    result2_ptr=0;
+
+    byte hasAnswer2 = (answer2 == 0);
 
     delay_100(); // модуль не особо шустрый
 
-    
-    do{	// this loop waits for the answer
+#ifdef GSM_DEBUG
+serial.print_P(PSTR("#"));
+#endif
+    do { // this loop waits for the answer
 	Red_LED_ON;
 	delay_10(); // чуть подождать чтобы что-то пришло
 	Red_LED_OFF;
 
-        if(gsm.available()) {	// за время ожидания что-то пришло: 38400 бод - 4800 байт/с, за 10мс придет 48 байт
+        if(gsm.available_S()) {	// за время ожидания что-то пришло: 38400 бод - 4800 байт/с, за 10мс придет 48 байт
     	    do {
         	char c;
-        	*cp++ = c = gsm.read();
+        	*cp++ = c = gsm.read_S();
         	*cp=0;
-serial.print(c);
-    	    } while(gsm.available()); // вычитать все что есть, а потом проверять будем
+#ifdef GSM_DEBUG
+serial.print(c); if(c=='\n') serial.print('#'); 
+#endif
+    	    } while(gsm.available_S()); // вычитать все что есть, а потом проверять будем
 
 	    // данные закончились, можно и проверить, если еще ответ не получен
 	    if(!has_answer) { 
                 // check if the desired answer  is in the response of the module
                 if((result_ptr=strstr_P(response, answer)) != NULL)  { // окончательный ответ
                     has_answer = 1;
-serial.println_P(PSTR("="));
+#ifdef GSM_DEBUG
+//serial.print_P(PSTR("="));
+#endif
                 } else
                 if((result_ptr=strstr_P(response, PSTR("ERROR"))) != NULL)  { // окончательная ошибка
                     has_answer = 3;
-//serial.println_P(PSTR(" ERR"));
+#ifdef GSM_DEBUG
+//serial.print_P(PSTR(" ERR"));
+#endif
                 }
 /*
                 if(has_answer){ // ответ только что получен
@@ -219,19 +329,26 @@ serial.println_P(PSTR("="));
 		}
 */
             }
+
+            if( answer2 !=NULL) {
+                result2_ptr=strstr_P(response, answer2); // промежуточный ответ
+                hasAnswer2 = (result2_ptr!=0);
+#ifdef GSM_DEBUG
+//serial.printf_P(PSTR("#2< "),result2_ptr);
+#endif
+            }
+
             // TODO: контролировать разбиение на строки
-        } else if(has_answer) // за время ожидания ничего не пришло - данные кончились, если ответ получен - готово
+        } else if(has_answer && hasAnswer2) // за время ожидания ничего не пришло - данные кончились, если ответ получен - готово
     	    break;
     } while( millis() < deadtime ); // Waits for the asnwer with time out
 
-    if( answer2 !=NULL) {
-	result2_ptr=strstr_P(response, answer2); // промежуточный ответ
-//serial.println(result2_ptr);
-    }
     
-//serial.println(" done");
+#ifdef GSM_DEBUG
+//serial.println("\n# done");
+#endif
 
-    return has_answer;
+    return lastError=has_answer;
 }
 
 uint8_t GSM::wait_answer(const char* answer, unsigned int timeout){
@@ -239,7 +356,7 @@ uint8_t GSM::wait_answer(const char* answer, unsigned int timeout){
 }
 
 
-bool GSM::sendSMS(const char * phone, const char * text) {
+byte GSM::sendSMS(const char * phone, const char * text) {
     if(!strlen(phone)) return true;	// если номер не задан то считаем что все ОК
     
     gsm.command(PSTR("+CMGF=1")); // text mode
@@ -251,7 +368,7 @@ bool GSM::sendSMS(const char * phone, const char * text) {
     readOut();
     gsm.println_P(PSTR("\""));
 
-    if(!wait_answer(PSTR(">"),3000)) return false;
+    if(1 != wait_answer(PSTR(">"),3000)) return false;
 
     gsm.print(text);
     gsm.println('\x1a');
@@ -261,83 +378,159 @@ bool GSM::sendSMS(const char * phone, const char * text) {
     return ok && result2_ptr!=NULL;
 }
 
+char * GSM::getRSSI(){
+    static const PROGMEM char patt[]="+CSQ:";
+    byte f= GSM::command(PSTR("+CSQ"), s_ok, patt);   // NET registered?
+                
+    if(!f) return 0; // command failed
+
+    return result2_ptr+sizeof(patt)-1;
+}
+
 static const char PROGMEM patt_minus[] = "\x1c\x38\x3d\x43\x41\x3a"; //1c 38 3d 43 41 3a - Минус в UTF без старшего байта
 
 
-bool GSM::sendUSSD(uint16_t text) {
-  readOut();
-  gsm.print_P(PSTR("AT+CUSD=1,\"*"));
 
-//serial.print_P(PSTR("USSD"));
+
+byte GSM::sendUSSD(uint16_t text) {
+  readOut();
+  byte flg=0;
+ 
+again:
+  gsm.print_P(PSTR("AT+CUSD=1,\""));
+  gsm.write(flg==0?'#':'*');
   gsm.print(text);
   gsm.println_P(PSTR("#\""));
 
+#if defined(USSD_DEBUG) && 0
+serial.print_P(PSTR("#USSD ["));
+serial.print_P(PSTR("AT+CUSD=1,\""));
+serial.write(flg==0?'#':'*');
+serial.print(text);
+serial.println_P(PSTR("#\""));
+serial.println_P(PSTR("#]"));
+#endif
+
+
   static const char PROGMEM patt[]="+CUSD:";
 
-    if(!wait_answer(patt,15000)) {
-//serial.print_P(PSTR("No ans"));
+    if(1!=wait_answer(patt,15000)) {
+#ifdef USSD_DEBUG
+serial.print_P(PSTR("#No ans "));
+#endif
+
+	if(flg==0){
+	    flg++;
+	    goto again;
+	}
+#ifdef USSD_DEBUG
+serial.print_P(PSTR("#ERROR flg=1 "));
+#endif
 	return false;
     }
   
-  delay_300();
+    delay_300();
   
-  byte cnt=0;
-  bool fIn=false;
-  uint16_t num=0;
-  //  0, "002D0037002E003000320440002E003004310430043B002E041D04300431043504400438044204350020002A00310030003600230020041E0431043504490430043D043D044B04390020043F043B0430044204350436002E00200418043D0444043E00200030003000300036", 72
-  char *bp;
-  byte pp = 0;
+    byte cnt=0;
+    bool fIn=false;
+    uint16_t num=0;
+    //  0, "002D0037002E003000320440002E003004310430043B002E041D04300431043504400438044204350020002A00310030003600230020041E0431043504490430043D043D044B04390020043F043B0430044204350436002E00200418043D0444043E00200030003000300036", 72
+    char *bp;
+    byte pp = 0;
   
-  bp = (char *)buf;
-  for(char *cp = result_ptr + sizeof(patt);;){
-    char c=*cp++;
-    
-    if(!c) break;	// end of line
-    if(c=='"'){
-//serial.print_P(PSTR("kaw"));
-//serial.println(cp);
+    bp = (char *)buf;
 
-	if(fIn) break; // внутри строки - строка кончилась
-	else
-	    fIn=true;
-    }else{
-	if(!fIn) continue; // пропускаем все перед кавычкой
+#ifdef USSD_DEBUG
+serial.printf_P(PSTR("#\n#ans: %s flg=%d "), bp, flg);
+#endif
+
+    for(char *cp = result_ptr + sizeof(patt)-1;;){
+        char c=*cp++;
+    
+        if(!c){
+#ifdef USSD_DEBUG
+serial.print_P(PSTR("#\n# EOL "));
+#endif
+        
+    	     break;	// end of line
+    	}
+        if(c=='"'){
+
+#ifdef USSD_DEBUG
+serial.print_P(PSTR("#\n# kaw "));
+serial.println(cp);
+#endif
+
+	    if(fIn) {
+#ifdef USSD_DEBUG
+serial.print_P(PSTR("#\n# close kaw "));
+serial.println(cp);
+serial.println((char *)buf);
+#endif
+		break; // внутри строки - строка кончилась
+	    } else fIn=true;
+        }else{
+	    if(!fIn) continue; // пропускаем все перед кавычкой
+
+	    if(flg){	// parse unicode
+#ifdef USSD_DEBUG
+serial.printf_P(PSTR("#\n#UTF c='%c' "),c);
+#endif
+
+	        num <<= 4;
+	        if(c>0x60) c-=0x20;
+	        c-='0';
+	        if(c>9) c+='0' - 'A' + 10;
+	        num += c;
 	
-	num <<= 4;
-	if(c>0x60) c-=0x20;
-	c-='0';
-	if(c>9) c+='0' - 'A' + 10;
-	num += c;
-	
-	if(++cnt==4) {// конец
+	        if(++cnt==4) {// конец
+#ifdef USSD_DEBUG
 //serial.print(num,16);
 //serial.println();
 //serial.println(cp);
 // 1c 38 3d 43 41 3a - Минус в UTF без старшего байта
+#endif
 
-	    cnt=0;
-	    c= (byte)num;
-	    if(c == patt_minus[pp]) {
-		pp++;
-	    } else if(pp==sizeof(patt_minus)-1) { // при совпадении запишем минус
-		*bp++='-';
-		*bp=0;
-	    } else 
-		pp=0; // reset on difference
+	            cnt=0;
+	            c= (byte)num;
 	
-	    if(num<0x100){  // skip all unicode
-		*bp++=c;
-		*bp=0;
+	            if(c == patt_minus[pp]) {
+		        pp++;
+	            } else if(pp==sizeof(patt_minus)-1) { // при совпадении запишем минус
+		        *bp++='-';
+		        *bp=0;
+	            } else 
+		        pp=0; // reset on difference
+	
+	            if(num<0x100){  // skip all unicode
+		        *bp++=c;
+		        *bp=0;
+		    }
+	            num=0;
+		}
+	    
+	    } else  { //just write
+#ifdef USSD_DEBUG
+serial.printf_P(PSTR("#c=%c\n"),c);
+#endif
+	        *bp++=c;
+	        *bp=0;
 	    }
-	    num=0;
 	}
     }
-  }
   
-    if(!fIn) return false;
-//serial.println((char *)buf);
+    if(!fIn) {
+#ifdef USSD_DEBUG
+serial.printf_P(PSTR("# not fIn!!! cp=%s\n"),(char *)buf);
+#endif
+	return 0;
+    }
 
-    return true;
+#ifdef USSD_DEBUG
+serial.printf_P(PSTR("# !!!=%s\n"),(char *)buf);
+#endif
+
+    return 1;
 }
 
 
@@ -347,18 +540,12 @@ int GSM::balance(){
     }
     
     // in Buf
-    
+
     char data[14];
     char *cp=data;
     bool fNeg=false;
     char *ptr=(char *)buf;
-    
-/*    if(strncmp_P((char *)buf,patt,sizeof(patt)-1) == 0) {
-//serial.print_P(PSTR("minus"));
-	fNeg=true;
-	ptr += sizeof(patt)-1;
-    }
-*/
+
     for(*cp=0;;){
 	char c=*ptr++;
 	if(!c) break;
@@ -413,7 +600,7 @@ void gprs_point() {  //Процедура начальной инициализ�
     gsm.print(coord.lon);
     gsm.println_P(PSTR("\""));
 
-    if(!wait_answer(patt,15000)) {
+    if(1 != wait_answer(patt,15000)) {
 //serial.print_P(PSTR("No ans"));
 	return false;
     }

@@ -3,7 +3,6 @@
 // printf without float
 #define SKIP_FLOAT
 
-//#define SERIAL_TX_BUFFER_SIZE 4 //SingleSerial buffer
 #include <SingleSerial.h>
 
 // Get the common arduino functions

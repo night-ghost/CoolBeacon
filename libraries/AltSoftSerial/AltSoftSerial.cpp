@@ -96,7 +96,7 @@ void AltSoftSerial::end(void)
 /**           Transmission             **/
 /****************************************/
 
-size_t AltSoftSerial::write(uint8_t b)
+size_t AltSoftSerial::write_S(uint8_t b)
 {
 	uint8_t intr_state, head;
 
@@ -118,6 +118,10 @@ size_t AltSoftSerial::write(uint8_t b)
 	}
 	SREG = intr_state;
 	return 1;
+}
+
+size_t AltSoftSerial::write(uint8_t b){
+    return write_S(b);
 }
 
 
@@ -265,7 +269,7 @@ ISR(COMPARE_B_INTERRUPT)
 
 
 
-uint8_t AltSoftSerial::read(void)
+uint8_t AltSoftSerial::read_S(void)
 {
 	uint8_t tail, out;
 
@@ -278,7 +282,12 @@ uint8_t AltSoftSerial::read(void)
 	return out;
 }
 
-uint8_t AltSoftSerial::peek(void)
+uint8_t AltSoftSerial::read(void){
+    return read_S();
+}
+
+
+uint8_t AltSoftSerial::peek_S(void)
 {
 	uint8_t tail;
 
@@ -288,7 +297,11 @@ uint8_t AltSoftSerial::peek(void)
 	return rx_buffer[tail];
 }
 
-uint8_t AltSoftSerial::available(void)
+uint8_t AltSoftSerial::peek(void){
+    return peek_S();
+}
+
+uint8_t AltSoftSerial::available_S(void)
 {
 	uint8_t head, tail;
 
@@ -296,6 +309,10 @@ uint8_t AltSoftSerial::available(void)
 	tail = rx_buffer_tail;
 	if (head >= tail) return head - tail;
 	return RX_BUFFER_SIZE + head - tail;
+}
+
+uint8_t AltSoftSerial::available(void){
+    return available_S();
 }
 
 void AltSoftSerial::flushInput(void)

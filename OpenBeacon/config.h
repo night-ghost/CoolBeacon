@@ -1,3 +1,9 @@
+#define DEBUG 1
+
+#define USE_MAVLINK 1
+#define AUTOBAUD 1
+
+#define USE_DTMF 1
 
 #define TELEMETRY_SPEED  57600  // How fast our MAVLink telemetry is coming to Serial port
 
@@ -21,11 +27,10 @@
 // Длительность одного "пика" (мс). По умолчанию: 1 секунда (1000мс)
 #define BEACON_BEEP_DURATION 600
 
-#define DISARM_DELAY_TIME 180 // время после дизарма до начала паники, секунды
-
-#define LAST_POINT_DISTANCE 3 // минимальное расстояние в метрах между точками
-
-#define MIN_HOME_DISTANCE 10 // ближе чем 10 метров от точки взлета - не активизируем GSM
+// in parameters!
+//#define DISARM_DELAY_TIME 180 // время после дизарма до начала паники, секунды
+//#define LAST_POINT_DISTANCE 3 // минимальное расстояние в метрах между точками
+//#define MIN_HOME_DISTANCE 10 // ближе чем 10 метров от точки взлета - не активизируем GSM
 
 
 // Корректировка таймера. Если спешит или отстает, то ставим в ноль, DEADTIME минут на 10 и засекаем время до первой посылки..
@@ -122,14 +127,14 @@ TCCR1A = (1<<WGM10);
   #define Green_LED_ON  PORTB |= _BV(5);
   #define Green_LED_OFF  PORTB &= ~_BV(5);
 
-  #define  nSEL_on PORTD |= (1<<4) //D4
+  #define  nSEL_on (PORTD |= (1<<4)) //D4
   #define  nSEL_off PORTD &= 0xEF //D4
   #define  SCK_on PORTC |= (1<<2) //A2
   #define  SCK_off PORTC &= 0xFB //A2
   #define  SDI_on PORTC |= (1<<1) //A1
   #define  SDI_off PORTC &= 0xFD //A1
-  #define  SDO_1 (PINC & 0x01) != 0 //A0
-  #define  SDO_0 (PINC & 0x01) == 0 //A0
+  #define  SDO_1 ((PINC & 0x01) != 0) //A0
+  #define  SDO_0 ((PINC & 0x01) == 0) //A0
   #define SDO_pin A0
   #define SDI_pin A1
   #define SCLK_pin A2
@@ -153,8 +158,8 @@ TCCR1A = (1<<WGM10);
   #define  SDI_on PORTB  |=  (1<<3) //D11 /PB3
   #define  SDI_off PORTB &= ~(1<<3) //D11 /PB3
   
-  #define  SDO_1 (PINB & 0x10) == 0x10 //D12 PB4
-  #define  SDO_0 (PINB & 0x10) == 0x00 //D12 PB4
+  #define  SDO_1 ((PINB & 0x10) == 0x10) //D12 PB4
+  #define  SDO_0 ((PINB & 0x10) == 0x00) //D12 PB4
 
   #define SDO_pin 12
   #define SDI_pin 11
@@ -176,4 +181,16 @@ TCCR1A = (1<<WGM10);
   #define BUZZER_HIGH (*buzzerPort |=  buzzerBit)
   #define BUZZER_LOW  (*buzzerPort &= ~buzzerBit)
  #endif
+#endif
+
+
+
+#ifdef DEBUG
+  #define DBG_PRINTLN(x)     { serial.print_P(PSTR("#" x)); serial.println(); /* serial.flush(); */ } 
+  #define DBG_PRINTVARLN(x)  { serial.write('#'); serial.print(#x); serial.print(": "); serial.println(x); /* serial.flush(); */ }
+  #define DBG_PRINTVAR(x)    { serial.write('#'); serial.print(#x); serial.print(": "); serial.print(x); serial.print(" ");  }
+#else
+  #define DBG_PRINTLN(x)     {}
+  #define DBG_PRINTVAR(x)    {}
+  #define DBG_PRINTVARLN(x)  {}
 #endif

@@ -4,6 +4,9 @@
 
 */
 
+extern void delay_10();
+extern void delay_1();
+
 void sendCoordsSms();
 void sendCoordsSms(bool fChute);
 unsigned int sqrt32(unsigned long n);

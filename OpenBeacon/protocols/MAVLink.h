@@ -1,9 +1,9 @@
+#ifndef MAVLink_H
+#define MAVLink_H
+
 #define HardwareSerial_h
 
 #include <GCS_MAVLink.h>
-
-//#include "../GCS_MAVLink/include/mavlink/v1.0/mavlink_types.h"
-//#include "../GCS_MAVLink/include/mavlink/v1.0/ardupilotmega/mavlink.h"
 
 // gcs_mavlink.h not included, so
 // severity levels used in STATUSTEXT messages
@@ -20,7 +20,9 @@ enum gcs_severity {
 
 extern struct loc_flags lflags;  // все булевые флаги кучей
 
-
+void NOINLINE millis_plus(uint32_t *dst, uint16_t inc) {
+    *dst = millis() + inc;
+}
 
 bool read_mavlink(){
     static mavlink_message_t msg; 
@@ -33,23 +35,31 @@ bool read_mavlink(){
 
 
     //grabing data 
-    while(serial.available() > 0) { 
-        uint8_t c = serial.read();
+    while(serial.available_S() > 0) { 
+        uint8_t c = serial.read_S();
 	byte mav_severity;
+	byte apm_mav_type;
 
         //trying to grab msg  
         if(mavlink_parse_char(MAVLINK_COMM_0, c, &msg, &status)) {
-            lastMAVBeat = millis();
-            lflags.mavlink_active = lflags.mavlink_got = true;
+            //lastMAVBeat = millis();
+            millis_plus(&lastMAVBeat, 0);
+            
+            lflags.data_link_active = lflags.mavlink_got = true;
+
+	    if( msg.msgid!=MAVLINK_MSG_ID_HEARTBEAT &&                // not heartbeat
+		mav_system && mav_system != msg.sysid)        // another system
+		    break; // skip packet
 
             //handle msg
             switch(msg.msgid) {
             case MAVLINK_MSG_ID_HEARTBEAT:
+                apm_mav_type = mavlink_msg_heartbeat_get_type(&msg);  // quad hexa octo etc
+                if(apm_mav_type == 6) break; // GCS
                 
-                lflags.mavbeat = 1;
-//                   apm_mav_system    = msg.sysid;
-//                    apm_mav_component = msg.compid;
-                 //   apm_mav_type      = mavlink_msg_heartbeat_get_type(&msg);
+//                lflags.mavbeat = 1; not used
+                mav_system    = msg.sysid;
+//                   apm_mav_component = msg.compid;
                 mav_mode = (uint8_t)mavlink_msg_heartbeat_get_custom_mode(&msg); // flight mode
             
                 //Mode (arducoper armed/disarmed)
@@ -110,14 +120,14 @@ bool read_mavlink(){
 
 #if 0
             case MAVLINK_MSG_ID_SCALED_PRESSURE:
-		press_abs = mavlink_msg_scaled_pressure_get_press_abs(&msg);
+		press_abs  = mavlink_msg_scaled_pressure_get_press_abs(&msg);
 		press_diff = mavlink_msg_scaled_pressure_get_press_diff(&msg);
                 break;
 #endif
 
 	    case MAVLINK_MSG_ID_STATUSTEXT:
 		mav_severity =  mavlink_msg_statustext_get_severity(&msg);
-		if(SEVERITY_HIGH <= mav_severity) { // обрабатываем новое системное сообщение только высокой важности
+		if(SEVERITY_HIGH >= mav_severity) { // обрабатываем новое системное сообщение только высокой важности
 		    byte len= mavlink_msg_statustext_get_text(&msg, (char *)buf);
 		    buf[len]=0;
 		//"Crash: Disarming"
@@ -133,7 +143,8 @@ bool read_mavlink(){
                 break;
             }
         }
-        delayMicroseconds(138);
+        if(!Serial.available_S())
+            delayMicroseconds((1000000/TELEMETRY_SPEED*10));
         //next one
     }
     // Update global packet drops counter
@@ -143,3 +154,4 @@ bool read_mavlink(){
     return got_coords;
 }
 
+#endif
