@@ -4,6 +4,16 @@
 #define AUTOBAUD 1
 
 #define USE_DTMF 1
+//#define USE_MORZE 1
+
+#define USE_GSM 1// используем или нет
+
+
+
+
+
+
+
 
 #define TELEMETRY_SPEED  57600  // How fast our MAVLink telemetry is coming to Serial port
 
@@ -26,11 +36,6 @@
 
 // Длительность одного "пика" (мс). По умолчанию: 1 секунда (1000мс)
 #define BEACON_BEEP_DURATION 600
-
-// in parameters!
-//#define DISARM_DELAY_TIME 180 // время после дизарма до начала паники, секунды
-//#define LAST_POINT_DISTANCE 3 // минимальное расстояние в метрах между точками
-//#define MIN_HOME_DISTANCE 10 // ближе чем 10 метров от точки взлета - не активизируем GSM
 
 
 // Корректировка таймера. Если спешит или отстает, то ставим в ноль, DEADTIME минут на 10 и засекаем время до первой посылки..
@@ -64,8 +69,6 @@
 
 // --------- GSM section
 
-#define USE_GSM // используем или нет
-
 #define GSM_DTR 6
 #define GSM_RING 7
 #define GSM_TX 9
@@ -81,7 +84,7 @@
 
 // -------  Morze section
 
-//#define USE_MORZE true
+
 // other settings in morseEnDecoder.h
 
 
@@ -116,6 +119,8 @@ TCCR1A = (1<<WGM10);
 
 */
 
+
+#define BEEP_TONE(freq) ((((1000000 + freq/2)/ freq +1 ) / 2 /* 2 periods */+2) / 4 /* 4 ms each tick */)
 
 
 #if HARDWARE_TYPE == 0 // Orange/HawkEye LRS receiver
@@ -186,8 +191,8 @@ TCCR1A = (1<<WGM10);
 
 
 #ifdef DEBUG
-  #define DBG_PRINTLN(x)     { serial.print_P(PSTR("#" x)); serial.println(); /* serial.flush(); */ } 
-  #define DBG_PRINTVARLN(x)  { serial.write('#'); serial.print(#x); serial.print(": "); serial.println(x); /* serial.flush(); */ }
+  #define DBG_PRINTLN(x)     { serial.print_P(PSTR("#" x)); serial.println();  serial.wait();  } 
+  #define DBG_PRINTVARLN(x)  { serial.write('#'); serial.print(#x); serial.print(": "); serial.println(x);  serial.wait();  }
   #define DBG_PRINTVAR(x)    { serial.write('#'); serial.print(#x); serial.print(": "); serial.print(x); serial.print(" ");  }
 #else
   #define DBG_PRINTLN(x)     {}

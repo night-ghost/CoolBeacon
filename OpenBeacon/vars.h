@@ -1,4 +1,19 @@
 
+struct _Flags {
+ bool wakeGPSvoice:1;
+ bool wakeGPS_DTMF:1;
+ bool wakeGPS_MORZE:1;
+
+ bool timeGPSvoice:1;
+ bool timeGPS_DTMF:1;
+ bool timeGPS_MORZE:1;
+};
+
+union Flags {
+    _Flags f;
+    uint32_t pad;
+};
+
 struct Params {
 /* 0
 Частота (Гц, 433075000)
@@ -149,8 +164,15 @@ RAM:012E Требует индивидуальной процедуры подб
 /* 18
 Коорд. после пробужден. (вкл)
  Определяет нужно ли слать координаты после пробуждения. По умолчанию включено.
+ 
+ А сделаем-ка это битовыми флагами! Че памяти зря пропадать...
+ 0 - boolWakeGPSvoice
+ 1 - boolWakeGPS_DTMF
+ 2 - boolWakeGPS_MORZE
+ ... - see struct _Flags
   default 1
-*/    uint32_t boolWakeGPSvoice;
+*/   // uint32_t boolWakeGPSvoice;
+	Flags flags;
 
 /* 19
     старший байт - номер ноги пищалки
@@ -266,7 +288,7 @@ RAM:012E Требует индивидуальной процедуры подб
 /* 15 */    0,		// TimerCorrection
 /* 16 */    5,		// SearchGPS_time  - not used
 /* 17 */    0,		// boolWakeBeacon
-/* 18 */    1,		// boolWakeGPSvoice
+/* 18 */   { 1 },	// boolWakeGPSvoice
 /* 19 */    6L<<8 | 0xB1,// WakeBuzzerParams  старший байт - номер ноги, младший - тон
 /* 20 */    5,	  	// номер ноги вспышки
 /* 21 */    0,		// HighSavePower
@@ -337,37 +359,37 @@ const PROGMEM StrParam strParam[] = {
 
 
 
-// булевые флаги кучей
+// булевые флаги кучей - память не проблема поэтому экономим флешь отказом от битов
 struct loc_flags {
-    bool mavlink_got:1; 		// флаг получения пакета
-    bool data_link_active:1; 	// флаг активности (навсегда)
+    bool mavlink_got; 		// флаг получения пакета
+    bool data_link_active; 	// флаг активности (навсегда)
 //    bool mavbeat;		// MAVLink session control
 
-    bool callActive:1;	// недавно принят вызов
+    bool callActive;	// недавно принят вызов
 
-    bool hasGPSdata:1;    // есть координаты для сообщения
-    bool pointDirty:1;    // последняя принятая точка не сохранена в EEPROM
-    bool listenGPS:1;     // состояние - слушаем или нет GPS
+    bool hasGPSdata;    // есть координаты для сообщения
+    bool pointDirty;    // последняя принятая точка не сохранена в EEPROM
+    bool listenGPS;     // состояние - слушаем или нет GPS
 
-    bool gsm_ok:1;	// инициализация удалась
-    bool smsSent:1;	// флаг отправки SMS
+    bool gsm_ok;	// инициализация удалась
+    bool smsSent;	// флаг отправки SMS
 
-    bool connected:1;    // в багдаде все спокойно, ничего не оторвалось и мы на внешнем питании - можно не скромничать
-    bool crash:1;		// c мавлинка пришло сообщение о краше
-    bool wasCrash:1;	// было сообщение о краше
-    bool chute:1;		// сработал парашют
+    bool connected;    // в багдаде все спокойно, ничего не оторвалось и мы на внешнем питании - можно не скромничать
+    bool crash;		// c мавлинка пришло сообщение о краше
+    bool wasCrash;	// было сообщение о краше
+    bool chute;		// сработал парашют
 
-    bool hasPower:1;          // текущее состояние питания
-    bool lastPowerState:1;    // предыдущее состояние для отслеживания изменений
-    bool wasPower:1;          // ранее было подано питание с коптера
+    bool hasPower;          // текущее состояние питания
+    bool lastPowerState;    // предыдущее состояние для отслеживания изменений
+    bool wasPower;          // ранее было подано питание с коптера
     
-    bool motor_armed:1;       // текущее состояние
-    bool last_armed_status:1; // предыдущее состояние для отслеживания изменений
-    bool motor_was_armed:1;   // флаг "моторы были включены" навсегда
+    bool motor_armed;       // текущее состояние
+    bool last_armed_status; // предыдущее состояние для отслеживания изменений
+    bool motor_was_armed;   // флаг "моторы были включены" навсегда
     
-    bool data_mode:1; // прием данных а не определение скорости
+    bool data_mode; // прием данных а не определение скорости
     
-    bool rfm_on:1;	// rfm_22 is turned on now
+    bool rfm_on;	// rfm_22 is turned on now
 };
 
 struct loc_flags lflags = {0,0,0,0,0,0,0}; // все булевые флаги кучей

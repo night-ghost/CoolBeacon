@@ -2,43 +2,17 @@
 
     morse encoder for CoolBeacon
 
+    rewritten to work as background thread by interrupts
+    
     based on:
  
  - Morse encoder / decoder classes for the Arduino.
 
  Copyright (C) 2010-2012 raron
 
- GNU GPLv3 license:
-
- This program is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
- 
- This program is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
- 
- You should have received a copy of the GNU General Public License
- along with this program.  If not, see <http://www.gnu.org/licenses/>.
- 
-
  Contact: raronzen@gmail.com
  Details: http://raronoff.wordpress.com/2010/12/16/morse-endecoder/
 
- TODO: (a bit messy but will remove in time as it (maybe) gets done)
- - Use micros() for faster timings
- - use different defines for different morse code tables, up to including 9-signal SOS etc
-   - how to deal with different Morse language settings? Define's don't work with libraries in Arduino...
-   - possibly combine binary tree with table for the last few signals, to keep size down.
- - UTF-8 and ASCII encoding
-   - configurable setting or both simultaneous?
- - Speed auto sense? (would be nice).
-   - e.g. average x nr. of shortest and also longest signals for a time?
-   - All the time or just when asked to?
-   - debounceDelay might interfere
- - Serial command parser example sketch (to change speed and settings on the fly etc) 
  
 
  History:
@@ -68,7 +42,7 @@
                 decoding only, of which this is based on.
 */ 
 
-#if USE_MORZE
+#if defined(USE_MORZE)
 
 #include "morseEnDecoder.h"
 #include <avr/power.h>
@@ -100,10 +74,13 @@ volatile byte morseEncoder::sendingMorseSignalNr;
 uint32_t morseEncoder::sendMorseTimer;
 bool morseEncoder::wasCall;
 
-void doSignals();
-void RFM_off(void);
-void RFM_set_TX();
-void waitForCall(byte t);
+
+extern void doSignals();
+extern void RFM_off(void);
+extern void RFM_set_TX();
+extern void waitForCall(byte t);
+extern void redBlink();
+extern void delay_50();
 
 morseEncoder::morseEncoder()
 {
@@ -124,10 +101,10 @@ void morseEncoder::write(char *cp) {
   encode();
 }
 
-extern volatile byte inc;            // инкремент таймера 0 для обеспечения нужной задержки
+extern volatile byte inc;      // инкремент таймера 0 для обеспечения нужной задержки
 extern volatile byte fTone;    // тон а не речь - меняем значение ШИМ самостоятельно, отсчитывая полупериоды
 
-volatile uint32_t periods; // вместо счета миллисекунд считаем свои прерывания
+volatile uint32_t periods;     // вместо счета миллисекунд считаем свои прерывания
 
 volatile bool fListen; // флаг "передача кончилась, можно слушать"
 
@@ -142,7 +119,10 @@ ISR(TIMER0_COMPB_vect) {
 void doSignals() {
     uint32_t currentTime = periods;
 
-    if (morseEncoder::sendingMorseSignalNr == 0 ) return; // character done
+    if (morseEncoder::sendingMorseSignalNr == 0 ) {
+    //	вобщем-то можно прямтут и подготовить новый символ, разрешив прерывания
+	return; // character done
+    }
 
     uint16_t diff = currentTime - morseEncoder::sendMorseTimer; // надолго промахнуться не должны
 
@@ -159,15 +139,12 @@ void doSignals() {
       case '.': // Send a dot (actually, stop sending a signal after a "dot time")
         if (diff >= DOT_TIME) {
     	    goto off;
-//          fTone=false; // signal(false);
-//          sendMorseTimer = currentTime;
-//          currSignalType = 'x'; // Mark the signal as sent
         }
         break;
         
       case '-': // Send a dash (same here, stop sending after a dash worth of time)
         if (diff >= DASH_TIME)    {
-off:      fTone=false; //signal(false);		//@@@
+off:      fTone=false; 
 	  // fListen=true; Шумодав станции проглатывает половину если отключать передачу
           currSignalType = 'x'; // Mark the signal as sent
           goto res; //morseEncoder::sendMorseTimer = currentTime;
@@ -321,8 +298,8 @@ prepare:
 	        // init HW
 
 //DBG_PRINTLN("morze start");
-//		RFM_set_TX();
-		RFM_tx_min();
+		RFM_set_TX();
+//		RFM_tx_min();
 
 	        //inc = 250/4; // 2000 Hz
 	        inc = BEEP_TONE(2500); // 2500Hz
@@ -332,7 +309,7 @@ prepare:
 	        TIMSK2 = (1 << OCIE2A) | (1 << TOIE2);  // Int T2 Overflow + Compare enabled
 	        TCCR2A = (1<<WGM21) | (1<<WGM20);       // Fast PWM.
 	        TCCR2B = (1<<CS20);                     // CLK/1 и режим Fast PWM
-//	        OCR0B = TCNT0;   // отложим прерывание на нужное время
+// зачем мешать естественному ходу вещей?    OCR0B = TCNT0;   // отложим прерывание на нужное время
 	        TIFR0  |= (1<<OCF0B)  | (1<<OCF0A);     // clear flags
 	        TIMSK0 |= (1<<OCIE0B) | (1<<OCIE0A);    // разрешим compare  interrupt
 	        OCR2A=0x0; // начальное значение компаратора

@@ -28,21 +28,16 @@ static inline boolean getBit(byte Reg, byte whichBit) {
 // если RFMка выключена то дерготня SDI ей не мешает, так что не тратим время на проверку
 ISR(TIMER2_COMPA_vect) {
 
-#ifdef DO_DTMF_OFF
-    DO_DTMF_OFF;
-#else
     SDI_off;
-#endif
 
     if(voiceOnBuzzer) BUZZER_HIGH;
 }
 
 ISR(TIMER2_OVF_vect)  {
     
-#ifdef DO_DTMF_ON
-    DO_DTMF_ON;
-#else
     SDI_on;
+#ifdef DO_DTMF
+    DO_DTMF;
 #endif
 
     if(voiceOnBuzzer) BUZZER_LOW;

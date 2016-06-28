@@ -80,7 +80,7 @@ ISR(TIMER0_COMPA_vect) {
 
 // используется ТОЛЬКО изнутри формирования звука при включенном таймере
 
-#define BEEP_TONE(freq) ((((1000000 + freq/2)/ freq +1 ) / 2 /* 2 periods */+2) / 4 /* 4 ms each tick */)
+//#define BEEP_TONE(freq) ((((1000000 + freq/2)/ freq +1 ) / 2 /* 2 periods */+2) / 4 /* 4 ms each tick */)
 
 void beep(unsigned int t){
 #if 0

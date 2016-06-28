@@ -1,6 +1,5 @@
 #if defined(USE_MAVLINK)
 #include "../GCS_MAVLink/include/mavlink/v1.0/mavlink_types.h"
-#include "protocols/MAVLink.h"
 #endif
 
 // see https://librepilot.atlassian.net/wiki/display/LPDOC/UavObjects
@@ -42,4 +41,5 @@ union {
 #if defined(USE_MAVLINK)
 #define  m_mavlink_buffer (&msg.m)
 #include "../GCS_MAVLink/GCS_MAVLink.h"
+#include "protocols/MAVLink.h"
 #endif

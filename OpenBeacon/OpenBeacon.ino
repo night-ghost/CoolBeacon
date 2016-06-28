@@ -51,7 +51,6 @@ GNU GPLv3 LICENSE
 
 #include "config.h"
 
-//#include <EEPROM.h>
 #include <AltSoftSerial.h>
 
 SingleSerialPort(serial);
@@ -62,19 +61,23 @@ SingleSerialPort(serial);
 #include "config-phones.h"
 #include "vars.h"
 #include "eeprom.h"
+
 #if defined(USE_GSM)
 #include "gsm.h"
 GSM gsm;
 #endif
+
 #include "chute.h"
 
-
-//#include <AP_Common.h>
-// uses AP_Param
-//#include <GCS_MAVLink.h> 
 #include "protocols.h"
 
 #include "func.h"
+
+#if defined(USE_MORZE)
+#include "morseEnDecoder.h"
+morseEncoder morze;
+#endif
+
 
 #ifdef USE_DTMF
 #include "dtmf.h"
@@ -101,16 +104,11 @@ byte powerByRSSI();
 
 
 #if defined(USE_MAVLINK)
-#include "protocols/MAVLink.h"
 extern BetterStream *mavlink_comm_0_port;
 #endif
 
 
 
-#if USE_MORZE
-#include "morseEnDecoder.h"
-morseEncoder morze;
-#endif
 
 
 void adc_setup(){
@@ -134,7 +132,7 @@ void adc_setup(){
 inline void initBuzzer(){
      BuzzerToneDly = (byte)p.WakeBuzzerParams;
 
-#if BUZZER_PIN
+#if defined(BUZZER_PIN)
 	pinMode(BUZZER_PIN,OUTPUT);
 
  #if defined(BUZZER_PIN_PORT) && defined(BUZZER_PIN_BIT)
@@ -748,11 +746,21 @@ void sayVoltage(byte v, byte beeps){
 
 
 
-void sayCoords(){
-    sendVOICE(messageBuff, GPS_data_fresh?0:3);
+void sayCoords(bool onlyVoice=false){
+
+    if(onlyVoice || p.flags.f.wakeGPSvoice || p.flags.f.timeGPSvoice)
+	sendVOICE(messageBuff, GPS_data_fresh?0:3);
+
+    if(onlyVoice) return;
+
+#if defined(USE_DTMF)
+    if( p.flags.f.wakeGPS_DTMF || p.flags.f.timeGPS_DTMF)
+	sendDTMF(messageBuff, GPS_data_fresh?0:3);
+#endif
     
 #if USE_MORZE
-    morze.write(messageBuff);
+    if( p.flags.f.wakeGPS_MORZE || p.flags.f.timeGPS_MORZE)
+        morze.write(messageBuff);
 #endif
 }
 
@@ -792,7 +800,7 @@ byte one_listen(){ // ожидание вызова 1 интервал, зате
 	// дождаться окончания вызова но не более 64 раз
 	// по умолчанию интервал прослушивания всего 50мс, так что время ожидания ограничено 6.4 секунды. не маловато?
 	//for(byte i=64;i>0 && preambleDetected;i--){ 
-	for(byte i=255;i>0 && (preambleDetected || tmpRSSI>80);i--){ // фоновой шум дома рядом с компом дает RSSI 52..68
+	for(byte i=100;i>0 && (preambleDetected || tmpRSSI>70);i--){ // фоновой шум дома рядом с компом дает RSSI 52..68
             listen_quant();
 	    Delay_listen();
 //DBG_PRINTVARLN(tmpRSSI);
@@ -920,7 +928,7 @@ begin:
 		    }
 		}
 		
-		if((byte)p.boolWakeGPSvoice){
+		if(p.flags.f.wakeGPSvoice || p.flags.f.wakeGPS_DTMF || p.flags.f.wakeGPS_MORZE ){ // wake flags
 //DBG_PRINTLN("proximity coords");
 		    sayCoords();
 		    goto xWait;
@@ -1110,7 +1118,7 @@ inline void printAllParams(){
     }
     for(byte i=0; i<sizeof(strParam)/sizeof(StrParam);i++){
 	print_SNS(PSTR("S"),i+PARAMS_END,PSTR("="));
-	serial.println(strParam[i].ptr);
+	serial.println((char *)pgm_read_word(&(strParam[i].ptr)));
     }
 
     serial.print_P(PSTR(">\n"));
@@ -1131,7 +1139,7 @@ void consoleCommands(){
         static const char PROGMEM patt[] = "cBeacon ";
 
         serial.print_P(patt);
-        serial.print_P(PSTR(TO_STRING(RELEASE_NUM)));
+        serial.print_P(PSTR(TO_STRING2(RELEASE_NUM)));
         serial.println();
 
         byte try_count=0;
@@ -1140,7 +1148,7 @@ void consoleCommands(){
 
         while(1) {
             byte cnt=0;
-            for(unsigned long t=millis()+3000; millis() < t;){
+            for(unsigned long t=millis()+1000; millis() < t;){
         	if(serial.available_S()) {
 		    byte c=serial.read_S();
 
@@ -1223,6 +1231,16 @@ void consoleCommands(){
 			    break;
 #endif
 
+#if defined(USE_MORZE)
+			case 'v':
+			    static const PROGMEM char m_patt[]="cBeacon v" TO_STRING(RELEASE_NUM) " 0123456789#*";
+			    strcpy_P((char *)buf, m_patt);
+			    //strcat_P((char *)buf, v_patt); the same size
+			    morze.write((char *)buf);
+			    morze.flush();
+			    break;
+#endif
+
 //			case 'p':
 //			    printAllParams();
 //			    break;
@@ -1233,11 +1251,11 @@ void consoleCommands(){
 		    
 #if defined(USE_GSM)
 			case 'm': // get balance
-DBG_PRINTLN("balance ");
+//DBG_PRINTLN("balance ");
 			    byte n;
 			    *buf=0;
 			    if(gsm.begin()) {
-	   			    gsm.sendUSSD(100);
+	   			gsm.sendUSSD(100);
 DBG_PRINTLN("result = ");
 DBG_PRINTVARLN((char *)buf);
 			
@@ -1284,7 +1302,7 @@ DBG_PRINTVARLN((char *)buf);
 			byte *bp=buf+1;
 
 DBG_PRINTLN("set val");
-DBG_PRINTVARLN((char *)buf);
+DBG_PRINTVARLN((char *)bp);
 
 		        byte n=atol((char *)bp); // зачем еще и atoi тaщить
 DBG_PRINTVARLN(n);
@@ -1318,11 +1336,16 @@ DBG_PRINTVARLN(((long *)&p )[n]);
 		        } else  {		// string params
 		    	    n-=PARAMS_END;
 		    	    if(n<sizeof(strParam)/sizeof(StrParam)) { 
-		    		StrParam s=strParam[n];
-				strncpy(s.ptr, (char *)bp, s.length-1);	// занести как есть в строковый параметр
+		    		const StrParam *sp = &strParam[n];
+				strncpy((char *)pgm_read_word(&(sp->ptr)), (char *)bp, pgm_read_byte(&(sp->length))-1);	// занести как есть в строковый параметр
 DBG_PRINTLN("new s val");
 DBG_PRINTVARLN((char *)buf);
+//DBG_PRINTVARLN(s.length);
 			    }
+else {
+    DBG_PRINTLN("skip s val");			    
+    DBG_PRINTVARLN(n);
+}
 			}
 		    }
 		}
@@ -1417,11 +1440,11 @@ void setup(void) {
 
     uint16_t vcc=readVCC();
 
- DBG_PRINTVARLN(vcc);
+// DBG_PRINTVARLN(vcc);
 
     if(vcc < VCC_LOW_THRESHOLD) {
 
-DBG_PRINTLN("low VCC");
+//DBG_PRINTLN("low VCC");
 
 	while((vcc=readVCC())<3300){
 //	      DBG_PRINTLN("low VCC");
@@ -1446,7 +1469,7 @@ DBG_PRINTLN("GSM init OK");
 	    if( bal == 0 ) { // не удалось запросить
 		sts=2; 
 		lflags.gsm_ok=true; // но можно попытаться
-DBG_PRINTLN("GSM balance fail");
+DBG_PRINTLN("balance fail");
 	    } 
 	    else if( bal > 2) {
 DBG_PRINTLN("GSM OK");
@@ -1534,7 +1557,7 @@ DBG_PRINTLN("GSM OK");
 		    //           300 полетов, или около года работы и полетов каждый день.
 		    //           А потом можно и Атмегу перепаять :)
 	if(getLastTrackPoint()) {
-DBG_PRINTLN("found EEPROM coords");
+DBG_PRINTLN("found EE coords");
 	    formatGPS_coords();
 DBG_PRINTVARLN(messageBuff);
 	}
@@ -1865,7 +1888,8 @@ DBG_PRINTLN("timed beacon init");
             	    buzzer_SOS();
                 } 
         // тут маяк неадекватно реагирует на вызов в разных режимах - а надо чтобы одинаково, это более ожидаемо
-        	sayCoords();
+    		if(p.flags.f.timeGPSvoice || p.flags.f.timeGPS_DTMF || p.flags.f.timeGPS_MORZE ) // time flags
+        	    sayCoords();
             }
         }
     
@@ -1943,7 +1967,7 @@ DBG_PRINTLN("MAVLINK coords");
 		    if( GPS_data_fresh  && ! GPS_data_OK){ // сообщаем координаты в эфир по первому фиксу
 		        if(lflags.motor_armed)  // если успели взлететь
 			    voiceOnBuzzer=true; // скажем на пищалку а не в эфир
-			sayCoords();
+			sayCoords(true);
 			voiceOnBuzzer=false;
 		        GPS_data_OK = 1;
 		    }
@@ -2018,7 +2042,7 @@ morzeGotCall:
 	    for(byte i=5; i>0; i--) {
 		Green_LED_ON;
 	        redBlink(); 
-	        Green_LED_OFF;
+	        Green_LED_OFF; // 5 мыргов синхронно обоими диодами
 	        delay_10();
 	    }
 //	    DBG_PRINTLN("proximity");

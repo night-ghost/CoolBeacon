@@ -21,4 +21,7 @@ typedef char prog_char;
 
 #define TO_STRING(x) #x
 
+#define TO_STRING2(x) TO_STRING(x)
+
 inline bool timeToScreen() { return false; } // compatibility with OSD code
+

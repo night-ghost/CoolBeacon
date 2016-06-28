@@ -4,7 +4,7 @@ All-in-One beacon and tracker: GSM, Radio, voice, flashlamp
 
 Based on:
    
-   OpenLRS Beacon Project (tBeacon late)  by Konstantin Sbitnev Version 0.1
+   OpenLRS Beacon Project (tBeacon late)  by Konstantin Sbitnev Version 0.1,
        wihch based on
        
    openLRSngBeacon by Kari Hautio - kha @ AeroQuad/RCGroups/IRC(Freenode)/FPVLAB etc.
@@ -38,6 +38,7 @@ Based on:
 * управление парашютной системой спасения (серво на CHUTE_PIN)
 * умеет управлять газоразрядной фотовспышкой (STROBE_PIN), срабатывать будет один раз на вызов
 * может передавать координаты морзянкой
+* может передавать координаты DTMF
 * TODO:? передавать точки на сервер по мере движения, с прореживанием и контролем расстояния 
     (нужность сомнительна, а GSM передатчик на борту не сильно полезен остальной электронике)
 * GPLv3 :)
@@ -75,6 +76,7 @@ Differences from tBeacon:
 * Control of the parachute rescue system (servo on CHUTE_PIN)
 * Can operate gas discharge flashlight (STROBE_PIN) which flashes once a call
 * Can transmit the coordinates in Morse code (for radio men)
+* Can transmit the coordinates in DTMF
 * TODO:(?) transfer coordinate points to the server as it moves, with thinning and controlled distance.
     (questionable necessity because GSM transmitter on board is not very helpful for the rest of the electronics)
 * GPLv3 :)
@@ -84,7 +86,7 @@ Removed:
 * No Auto protocol - always MAVlink/UAVtalk/MWII
 * No support callsign Morse code (although if anyone should something can be done easily and with the encoding on board)
 * There is no control the format of coordinates of the configurator - is given in the compile time
-* (Almost) do not have control of the pin connecting buzzer in configurator - is given in compile time
+* (Almost) do not have control of the pin connecting buzzer in ConfigTool - is given in compile time
 * No HighSavePower mode
 * There is no word "pinnacle" instead a double "beep"
 
@@ -100,6 +102,6 @@ to compile:
 
 then add 
 
-#define SKIP_FLOAT
+ ##define SKIP_FLOAT
 
 to SingleSerial/BetterSteam.h

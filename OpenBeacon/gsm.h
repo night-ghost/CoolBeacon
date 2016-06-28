@@ -32,6 +32,7 @@ class GSM: public AltSoftSerial
   public:
     GSM(void);
     static bool begin();
+    static bool begin(long speed);
     static void end();
 
     static byte _write(uint8_t c);
@@ -52,9 +53,15 @@ class GSM: public AltSoftSerial
     static byte sendUSSD(uint16_t text);
     static char * getRSSI(void);
     static int balance(void);
+    static bool initGPRS();
+    static bool setAPN(char*);
+    static bool initUDP(uint16_t);
+    static bool connectUDP(char *url, uint16_t port);
+    static void doOnDisconnect();
 //  private:
     static char response[RESPONCE_LENGTH];
     static byte lastError;
+    static byte isTransparent;
 };
 
 #endif
