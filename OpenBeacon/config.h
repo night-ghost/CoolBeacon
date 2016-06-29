@@ -7,7 +7,7 @@
 //#define USE_MORZE 1
 
 #define USE_GSM 1// используем или нет
-
+//#define USE_GPRS 1 not used!
 
 
 

@@ -58,10 +58,16 @@ class GSM: public AltSoftSerial
     static bool initUDP(uint16_t);
     static bool connectUDP(char *url, uint16_t port);
     static void doOnDisconnect();
+    static void pulseDTR();
+    static void pulseReset();
+    static bool cregWait();
+    static bool syncSpeed();
+
 //  private:
     static char response[RESPONCE_LENGTH];
     static byte lastError;
     static byte isTransparent;
+    static byte isActive;
 };
 
 #endif

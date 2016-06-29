@@ -35,7 +35,7 @@ namespace CT {
         
 
         //*****************************************/		
-        public const string VERSION = "r001";
+        public const string VERSION = "r0.17";
 
 
         
@@ -1940,6 +1940,10 @@ namespace CT {
         }
 
 
+        private void btnMorze_Click(object sender, EventArgs e) {
+            beaconCommand('b');
+        }
+
         private void btnClearSMS_Click(object sender, EventArgs e) {
             beaconCommand('g'); // direct SIM800 connection
             GSM_command("+CMGD=1,4");
@@ -2457,6 +2461,11 @@ as_number:
             
 
         }
+
+    
+
+
+       
 
 
         

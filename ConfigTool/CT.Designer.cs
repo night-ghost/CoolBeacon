@@ -53,6 +53,9 @@ namespace CT
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.PANEL_tabs = new System.Windows.Forms.TabControl();
             this.tabPageConfig = new System.Windows.Forms.TabPage();
+            this.btnMorze = new System.Windows.Forms.Button();
+            this.btnDTMF = new System.Windows.Forms.Button();
+            this.tnSayBuzzer = new System.Windows.Forms.Button();
             this.btnSave = new System.Windows.Forms.Button();
             this.btnTrack = new System.Windows.Forms.Button();
             this.btnCalibrate = new System.Windows.Forms.Button();
@@ -79,6 +82,10 @@ namespace CT
             this.label17 = new System.Windows.Forms.Label();
             this.txtParam7 = new System.Windows.Forms.TextBox();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.groupBox6 = new System.Windows.Forms.GroupBox();
+            this.chkParam18_5 = new System.Windows.Forms.CheckBox();
+            this.chkParam18_4 = new System.Windows.Forms.CheckBox();
+            this.chkParam18_3 = new System.Windows.Forms.CheckBox();
             this.txtParam6 = new System.Windows.Forms.TextBox();
             this.label9 = new System.Windows.Forms.Label();
             this.txtParam5 = new System.Windows.Forms.TextBox();
@@ -110,6 +117,9 @@ namespace CT
             this.label21 = new System.Windows.Forms.Label();
             this.label18 = new System.Windows.Forms.Label();
             this.groupBox3 = new System.Windows.Forms.GroupBox();
+            this.groupBox5 = new System.Windows.Forms.GroupBox();
+            this.chkParam18_2 = new System.Windows.Forms.CheckBox();
+            this.chkParam18_1 = new System.Windows.Forms.CheckBox();
             this.chkParam18 = new System.Windows.Forms.CheckBox();
             this.chkParam17 = new System.Windows.Forms.CheckBox();
             this.label16 = new System.Windows.Forms.Label();
@@ -150,16 +160,16 @@ namespace CT
             this.lblTLog = new System.Windows.Forms.Label();
             this.btnTLog = new System.Windows.Forms.Button();
             this.label14 = new System.Windows.Forms.Label();
-            this.tnSayBuzzer = new System.Windows.Forms.Button();
-            this.btnDTMF = new System.Windows.Forms.Button();
             this.statusStrip1.SuspendLayout();
             this.menuStrip1.SuspendLayout();
             this.PANEL_tabs.SuspendLayout();
             this.tabPageConfig.SuspendLayout();
             this.groupBox2.SuspendLayout();
             this.groupBox1.SuspendLayout();
+            this.groupBox6.SuspendLayout();
             this.groupBox8.SuspendLayout();
             this.groupBox3.SuspendLayout();
+            this.groupBox5.SuspendLayout();
             this.groupBoxRSSI.SuspendLayout();
             this.tabPageAlt.SuspendLayout();
             this.groupBox4.SuspendLayout();
@@ -170,7 +180,7 @@ namespace CT
             // 
             this.CMB_ComPort.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.CMB_ComPort.FormattingEnabled = true;
-            this.CMB_ComPort.Location = new System.Drawing.Point(85, 42);
+            this.CMB_ComPort.Location = new System.Drawing.Point(104, 42);
             this.CMB_ComPort.Name = "CMB_ComPort";
             this.CMB_ComPort.Size = new System.Drawing.Size(98, 21);
             this.CMB_ComPort.TabIndex = 4;
@@ -183,7 +193,7 @@ namespace CT
             this.toolStripStatusLabel1});
             this.statusStrip1.Location = new System.Drawing.Point(0, 503);
             this.statusStrip1.Name = "statusStrip1";
-            this.statusStrip1.Size = new System.Drawing.Size(724, 22);
+            this.statusStrip1.Size = new System.Drawing.Size(743, 22);
             this.statusStrip1.TabIndex = 8;
             this.statusStrip1.Text = "statusStrip1";
             // 
@@ -205,7 +215,7 @@ namespace CT
             this.helpToolStripMenuItem});
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
             this.menuStrip1.Name = "menuStrip1";
-            this.menuStrip1.Size = new System.Drawing.Size(724, 24);
+            this.menuStrip1.Size = new System.Drawing.Size(743, 24);
             this.menuStrip1.TabIndex = 10;
             this.menuStrip1.Text = "menuStrip1";
             // 
@@ -340,11 +350,12 @@ namespace CT
             this.PANEL_tabs.Margin = new System.Windows.Forms.Padding(2);
             this.PANEL_tabs.Name = "PANEL_tabs";
             this.PANEL_tabs.SelectedIndex = 0;
-            this.PANEL_tabs.Size = new System.Drawing.Size(721, 407);
+            this.PANEL_tabs.Size = new System.Drawing.Size(740, 407);
             this.PANEL_tabs.TabIndex = 0;
             // 
             // tabPageConfig
             // 
+            this.tabPageConfig.Controls.Add(this.btnMorze);
             this.tabPageConfig.Controls.Add(this.btnDTMF);
             this.tabPageConfig.Controls.Add(this.tnSayBuzzer);
             this.tabPageConfig.Controls.Add(this.btnSave);
@@ -359,17 +370,47 @@ namespace CT
             this.tabPageConfig.Margin = new System.Windows.Forms.Padding(2);
             this.tabPageConfig.Name = "tabPageConfig";
             this.tabPageConfig.Padding = new System.Windows.Forms.Padding(2);
-            this.tabPageConfig.Size = new System.Drawing.Size(713, 381);
+            this.tabPageConfig.Size = new System.Drawing.Size(732, 381);
             this.tabPageConfig.TabIndex = 1;
             this.tabPageConfig.Text = "Config";
             this.tabPageConfig.UseVisualStyleBackColor = true;
             // 
+            // btnMorze
+            // 
+            this.btnMorze.Location = new System.Drawing.Point(469, 343);
+            this.btnMorze.Name = "btnMorze";
+            this.btnMorze.Size = new System.Drawing.Size(84, 24);
+            this.btnMorze.TabIndex = 31;
+            this.btnMorze.Text = "Test Morze";
+            this.btnMorze.UseVisualStyleBackColor = true;
+            this.btnMorze.Click += new System.EventHandler(this.btnMorze_Click);
+            // 
+            // btnDTMF
+            // 
+            this.btnDTMF.Location = new System.Drawing.Point(370, 343);
+            this.btnDTMF.Name = "btnDTMF";
+            this.btnDTMF.Size = new System.Drawing.Size(93, 24);
+            this.btnDTMF.TabIndex = 30;
+            this.btnDTMF.Text = "Test DTMF";
+            this.btnDTMF.UseVisualStyleBackColor = true;
+            this.btnDTMF.Click += new System.EventHandler(this.btnDTMF_Click);
+            // 
+            // tnSayBuzzer
+            // 
+            this.tnSayBuzzer.Location = new System.Drawing.Point(270, 343);
+            this.tnSayBuzzer.Name = "tnSayBuzzer";
+            this.tnSayBuzzer.Size = new System.Drawing.Size(94, 24);
+            this.tnSayBuzzer.TabIndex = 29;
+            this.tnSayBuzzer.Text = "Say on Buzzer";
+            this.tnSayBuzzer.UseVisualStyleBackColor = true;
+            this.tnSayBuzzer.Click += new System.EventHandler(this.tnSayBuzzer_Click);
+            // 
             // btnSave
             // 
             this.btnSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnSave.Location = new System.Drawing.Point(577, 344);
+            this.btnSave.Location = new System.Drawing.Point(596, 343);
             this.btnSave.Name = "btnSave";
-            this.btnSave.Size = new System.Drawing.Size(128, 23);
+            this.btnSave.Size = new System.Drawing.Size(128, 25);
             this.btnSave.TabIndex = 17;
             this.btnSave.Text = "Save to EEPROM";
             this.hint.SetToolTip(this.btnSave, "Read current settings form the beacon\'s memory");
@@ -378,9 +419,9 @@ namespace CT
             // 
             // btnTrack
             // 
-            this.btnTrack.Location = new System.Drawing.Point(137, 343);
+            this.btnTrack.Location = new System.Drawing.Point(123, 343);
             this.btnTrack.Name = "btnTrack";
-            this.btnTrack.Size = new System.Drawing.Size(115, 24);
+            this.btnTrack.Size = new System.Drawing.Size(115, 25);
             this.btnTrack.TabIndex = 14;
             this.btnTrack.Text = "Download track";
             this.hint.SetToolTip(this.btnTrack, "Downloa last points saved in beacon");
@@ -389,9 +430,9 @@ namespace CT
             // 
             // btnCalibrate
             // 
-            this.btnCalibrate.Location = new System.Drawing.Point(17, 344);
+            this.btnCalibrate.Location = new System.Drawing.Point(17, 343);
             this.btnCalibrate.Name = "btnCalibrate";
-            this.btnCalibrate.Size = new System.Drawing.Size(97, 23);
+            this.btnCalibrate.Size = new System.Drawing.Size(97, 25);
             this.btnCalibrate.TabIndex = 13;
             this.btnCalibrate.Text = "Calibrate";
             this.hint.SetToolTip(this.btnCalibrate, "Frequency calibration. \"Make a transceiver with Tone Burst ready and set it on th" +
@@ -422,9 +463,9 @@ namespace CT
             this.groupBox2.Controls.Add(this.txtParam22);
             this.groupBox2.Controls.Add(this.label17);
             this.groupBox2.Controls.Add(this.txtParam7);
-            this.groupBox2.Location = new System.Drawing.Point(539, 5);
+            this.groupBox2.Location = new System.Drawing.Point(556, 5);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(169, 322);
+            this.groupBox2.Size = new System.Drawing.Size(171, 322);
             this.groupBox2.TabIndex = 11;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Misc";
@@ -486,6 +527,7 @@ namespace CT
             this.txtParam10.TabIndex = 23;
             this.txtParam10.Text = "180";
             this.txtParam10.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+            this.hint.SetToolTip(this.txtParam10, "Panic if no disarm in this time");
             this.txtParam10.Leave += new System.EventHandler(this.txtParam0_Leave);
             // 
             // label33
@@ -506,8 +548,7 @@ namespace CT
             this.txtParam29b.TabIndex = 21;
             this.txtParam29b.Text = "3";
             this.txtParam29b.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-            this.hint.SetToolTip(this.txtParam29b, "Frequency of coordinates report for timer beacon Default is 5. 0..1 every transmi" +
-        "ssion, 5 every fifth transmission etc.");
+            this.hint.SetToolTip(this.txtParam29b, "Minial distance between GPS point saved to EEPROM");
             this.txtParam29b.Leave += new System.EventHandler(this.txtParam29b_Leave);
             // 
             // btnSay
@@ -649,6 +690,7 @@ namespace CT
             // 
             // groupBox1
             // 
+            this.groupBox1.Controls.Add(this.groupBox6);
             this.groupBox1.Controls.Add(this.txtParam6);
             this.groupBox1.Controls.Add(this.label9);
             this.groupBox1.Controls.Add(this.txtParam5);
@@ -660,18 +702,66 @@ namespace CT
             this.groupBox1.Controls.Add(this.label4);
             this.groupBox1.Controls.Add(this.txtParam2);
             this.groupBox1.Controls.Add(this.label3);
-            this.groupBox1.Location = new System.Drawing.Point(9, 90);
+            this.groupBox1.Location = new System.Drawing.Point(3, 90);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(190, 238);
+            this.groupBox1.Size = new System.Drawing.Size(196, 238);
             this.groupBox1.TabIndex = 10;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Timer beacon";
             // 
+            // groupBox6
+            // 
+            this.groupBox6.Controls.Add(this.chkParam18_5);
+            this.groupBox6.Controls.Add(this.chkParam18_4);
+            this.groupBox6.Controls.Add(this.chkParam18_3);
+            this.groupBox6.Location = new System.Drawing.Point(7, 155);
+            this.groupBox6.Name = "groupBox6";
+            this.groupBox6.Size = new System.Drawing.Size(115, 77);
+            this.groupBox6.TabIndex = 18;
+            this.groupBox6.TabStop = false;
+            this.groupBox6.Text = "Coords on timer by";
+            // 
+            // chkParam18_5
+            // 
+            this.chkParam18_5.AutoSize = true;
+            this.chkParam18_5.Checked = true;
+            this.chkParam18_5.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.chkParam18_5.Location = new System.Drawing.Point(32, 53);
+            this.chkParam18_5.Name = "chkParam18_5";
+            this.chkParam18_5.Size = new System.Drawing.Size(55, 17);
+            this.chkParam18_5.TabIndex = 16;
+            this.chkParam18_5.Text = "Morze";
+            this.chkParam18_5.UseVisualStyleBackColor = true;
+            // 
+            // chkParam18_4
+            // 
+            this.chkParam18_4.AutoSize = true;
+            this.chkParam18_4.Checked = true;
+            this.chkParam18_4.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.chkParam18_4.Location = new System.Drawing.Point(32, 36);
+            this.chkParam18_4.Name = "chkParam18_4";
+            this.chkParam18_4.Size = new System.Drawing.Size(56, 17);
+            this.chkParam18_4.TabIndex = 15;
+            this.chkParam18_4.Text = "DTMF";
+            this.chkParam18_4.UseVisualStyleBackColor = true;
+            // 
+            // chkParam18_3
+            // 
+            this.chkParam18_3.AutoSize = true;
+            this.chkParam18_3.Checked = true;
+            this.chkParam18_3.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.chkParam18_3.Location = new System.Drawing.Point(32, 19);
+            this.chkParam18_3.Name = "chkParam18_3";
+            this.chkParam18_3.Size = new System.Drawing.Size(53, 17);
+            this.chkParam18_3.TabIndex = 14;
+            this.chkParam18_3.Text = "Voice";
+            this.chkParam18_3.UseVisualStyleBackColor = true;
+            // 
             // txtParam6
             // 
-            this.txtParam6.Location = new System.Drawing.Point(22, 203);
+            this.txtParam6.Location = new System.Drawing.Point(120, 129);
             this.txtParam6.Name = "txtParam6";
-            this.txtParam6.Size = new System.Drawing.Size(131, 20);
+            this.txtParam6.Size = new System.Drawing.Size(69, 20);
             this.txtParam6.TabIndex = 10;
             this.txtParam6.Text = "1200";
             this.txtParam6.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
@@ -682,7 +772,7 @@ namespace CT
             // label9
             // 
             this.label9.AutoSize = true;
-            this.label9.Location = new System.Drawing.Point(41, 187);
+            this.label9.Location = new System.Drawing.Point(26, 129);
             this.label9.Name = "label9";
             this.label9.Size = new System.Drawing.Size(78, 13);
             this.label9.TabIndex = 9;
@@ -690,9 +780,9 @@ namespace CT
             // 
             // txtParam5
             // 
-            this.txtParam5.Location = new System.Drawing.Point(22, 155);
+            this.txtParam5.Location = new System.Drawing.Point(120, 108);
             this.txtParam5.Name = "txtParam5";
-            this.txtParam5.Size = new System.Drawing.Size(131, 20);
+            this.txtParam5.Size = new System.Drawing.Size(69, 20);
             this.txtParam5.TabIndex = 8;
             this.txtParam5.Text = "240";
             this.txtParam5.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
@@ -703,7 +793,7 @@ namespace CT
             // label8
             // 
             this.label8.AutoSize = true;
-            this.label8.Location = new System.Drawing.Point(36, 139);
+            this.label8.Location = new System.Drawing.Point(26, 111);
             this.label8.Name = "label8";
             this.label8.Size = new System.Drawing.Size(85, 13);
             this.label8.TabIndex = 7;
@@ -711,7 +801,7 @@ namespace CT
             // 
             // txtParam4
             // 
-            this.txtParam4.Location = new System.Drawing.Point(105, 100);
+            this.txtParam4.Location = new System.Drawing.Point(120, 79);
             this.txtParam4.Name = "txtParam4";
             this.txtParam4.Size = new System.Drawing.Size(70, 20);
             this.txtParam4.TabIndex = 6;
@@ -724,7 +814,7 @@ namespace CT
             // 
             // txtParam3
             // 
-            this.txtParam3.Location = new System.Drawing.Point(11, 100);
+            this.txtParam3.Location = new System.Drawing.Point(120, 50);
             this.txtParam3.Name = "txtParam3";
             this.txtParam3.Size = new System.Drawing.Size(70, 20);
             this.txtParam3.TabIndex = 5;
@@ -738,7 +828,7 @@ namespace CT
             // label7
             // 
             this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(115, 84);
+            this.label7.Location = new System.Drawing.Point(78, 78);
             this.label7.Name = "label7";
             this.label7.Size = new System.Drawing.Size(25, 13);
             this.label7.TabIndex = 4;
@@ -747,7 +837,7 @@ namespace CT
             // label6
             // 
             this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(16, 84);
+            this.label6.Location = new System.Drawing.Point(78, 53);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(33, 13);
             this.label6.TabIndex = 3;
@@ -756,7 +846,7 @@ namespace CT
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(66, 71);
+            this.label4.Location = new System.Drawing.Point(16, 61);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(53, 13);
             this.label4.TabIndex = 2;
@@ -764,9 +854,9 @@ namespace CT
             // 
             // txtParam2
             // 
-            this.txtParam2.Location = new System.Drawing.Point(42, 34);
+            this.txtParam2.Location = new System.Drawing.Point(135, 15);
             this.txtParam2.Name = "txtParam2";
-            this.txtParam2.Size = new System.Drawing.Size(111, 20);
+            this.txtParam2.Size = new System.Drawing.Size(55, 20);
             this.txtParam2.TabIndex = 1;
             this.txtParam2.Text = "0";
             this.txtParam2.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
@@ -803,7 +893,7 @@ namespace CT
             this.groupBox8.Controls.Add(this.txtPhone1);
             this.groupBox8.Controls.Add(this.label21);
             this.groupBox8.Controls.Add(this.label18);
-            this.groupBox8.Location = new System.Drawing.Point(351, 3);
+            this.groupBox8.Location = new System.Drawing.Point(368, 3);
             this.groupBox8.Name = "groupBox8";
             this.groupBox8.Size = new System.Drawing.Size(182, 324);
             this.groupBox8.TabIndex = 9;
@@ -983,7 +1073,7 @@ namespace CT
             // 
             // groupBox3
             // 
-            this.groupBox3.Controls.Add(this.chkParam18);
+            this.groupBox3.Controls.Add(this.groupBox5);
             this.groupBox3.Controls.Add(this.chkParam17);
             this.groupBox3.Controls.Add(this.label16);
             this.groupBox3.Controls.Add(this.txtParam25);
@@ -997,22 +1087,58 @@ namespace CT
             this.groupBox3.Controls.Add(this.txtParam11);
             this.groupBox3.Location = new System.Drawing.Point(205, 5);
             this.groupBox3.Name = "groupBox3";
-            this.groupBox3.Size = new System.Drawing.Size(140, 323);
+            this.groupBox3.Size = new System.Drawing.Size(157, 323);
             this.groupBox3.TabIndex = 4;
             this.groupBox3.TabStop = false;
             this.groupBox3.Text = "Call Beacon (responder)";
             this.hint.SetToolTip(this.groupBox3, "Determines if it is necessary to report coordinates after wakeup. Default is on.");
+            // 
+            // groupBox5
+            // 
+            this.groupBox5.Controls.Add(this.chkParam18_2);
+            this.groupBox5.Controls.Add(this.chkParam18_1);
+            this.groupBox5.Controls.Add(this.chkParam18);
+            this.groupBox5.Location = new System.Drawing.Point(3, 240);
+            this.groupBox5.Name = "groupBox5";
+            this.groupBox5.Size = new System.Drawing.Size(112, 78);
+            this.groupBox5.TabIndex = 14;
+            this.groupBox5.TabStop = false;
+            this.groupBox5.Text = "Coords on call by";
+            // 
+            // chkParam18_2
+            // 
+            this.chkParam18_2.AutoSize = true;
+            this.chkParam18_2.Checked = true;
+            this.chkParam18_2.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.chkParam18_2.Location = new System.Drawing.Point(33, 54);
+            this.chkParam18_2.Name = "chkParam18_2";
+            this.chkParam18_2.Size = new System.Drawing.Size(55, 17);
+            this.chkParam18_2.TabIndex = 16;
+            this.chkParam18_2.Text = "Morze";
+            this.chkParam18_2.UseVisualStyleBackColor = true;
+            // 
+            // chkParam18_1
+            // 
+            this.chkParam18_1.AutoSize = true;
+            this.chkParam18_1.Checked = true;
+            this.chkParam18_1.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.chkParam18_1.Location = new System.Drawing.Point(33, 37);
+            this.chkParam18_1.Name = "chkParam18_1";
+            this.chkParam18_1.Size = new System.Drawing.Size(56, 17);
+            this.chkParam18_1.TabIndex = 15;
+            this.chkParam18_1.Text = "DTMF";
+            this.chkParam18_1.UseVisualStyleBackColor = true;
             // 
             // chkParam18
             // 
             this.chkParam18.AutoSize = true;
             this.chkParam18.Checked = true;
             this.chkParam18.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.chkParam18.Location = new System.Drawing.Point(16, 296);
+            this.chkParam18.Location = new System.Drawing.Point(33, 20);
             this.chkParam18.Name = "chkParam18";
-            this.chkParam18.Size = new System.Drawing.Size(82, 17);
-            this.chkParam18.TabIndex = 13;
-            this.chkParam18.Text = "GPS on call";
+            this.chkParam18.Size = new System.Drawing.Size(53, 17);
+            this.chkParam18.TabIndex = 14;
+            this.chkParam18.Text = "Voice";
             this.chkParam18.UseVisualStyleBackColor = true;
             // 
             // chkParam17
@@ -1020,7 +1146,7 @@ namespace CT
             this.chkParam17.AutoSize = true;
             this.chkParam17.Checked = true;
             this.chkParam17.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.chkParam17.Location = new System.Drawing.Point(16, 273);
+            this.chkParam17.Location = new System.Drawing.Point(9, 215);
             this.chkParam17.Name = "chkParam17";
             this.chkParam17.Size = new System.Drawing.Size(90, 17);
             this.chkParam17.TabIndex = 12;
@@ -1030,17 +1156,17 @@ namespace CT
             // label16
             // 
             this.label16.AutoSize = true;
-            this.label16.Location = new System.Drawing.Point(13, 229);
+            this.label16.Location = new System.Drawing.Point(6, 116);
             this.label16.Name = "label16";
-            this.label16.Size = new System.Drawing.Size(117, 13);
+            this.label16.Size = new System.Drawing.Size(91, 13);
             this.label16.TabIndex = 11;
-            this.label16.Text = "Call tone frequency, Hz";
+            this.label16.Text = "Call tone freq., Hz";
             // 
             // txtParam25
             // 
-            this.txtParam25.Location = new System.Drawing.Point(16, 245);
+            this.txtParam25.Location = new System.Drawing.Point(105, 113);
             this.txtParam25.Name = "txtParam25";
-            this.txtParam25.Size = new System.Drawing.Size(111, 20);
+            this.txtParam25.Size = new System.Drawing.Size(46, 20);
             this.txtParam25.TabIndex = 10;
             this.txtParam25.Text = "1750";
             this.txtParam25.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
@@ -1050,7 +1176,7 @@ namespace CT
             // label15
             // 
             this.label15.AutoSize = true;
-            this.label15.Location = new System.Drawing.Point(11, 175);
+            this.label15.Location = new System.Drawing.Point(6, 91);
             this.label15.Name = "label15";
             this.label15.Size = new System.Drawing.Size(85, 13);
             this.label15.TabIndex = 9;
@@ -1058,9 +1184,9 @@ namespace CT
             // 
             // txtParam14
             // 
-            this.txtParam14.Location = new System.Drawing.Point(15, 191);
+            this.txtParam14.Location = new System.Drawing.Point(105, 88);
             this.txtParam14.Name = "txtParam14";
-            this.txtParam14.Size = new System.Drawing.Size(111, 20);
+            this.txtParam14.Size = new System.Drawing.Size(46, 20);
             this.txtParam14.TabIndex = 8;
             this.txtParam14.Text = "5";
             this.txtParam14.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
@@ -1072,7 +1198,7 @@ namespace CT
             // label13
             // 
             this.label13.AutoSize = true;
-            this.label13.Location = new System.Drawing.Point(12, 124);
+            this.label13.Location = new System.Drawing.Point(6, 67);
             this.label13.Name = "label13";
             this.label13.Size = new System.Drawing.Size(67, 13);
             this.label13.TabIndex = 7;
@@ -1080,9 +1206,9 @@ namespace CT
             // 
             // txtParam13
             // 
-            this.txtParam13.Location = new System.Drawing.Point(14, 140);
+            this.txtParam13.Location = new System.Drawing.Point(105, 63);
             this.txtParam13.Name = "txtParam13";
-            this.txtParam13.Size = new System.Drawing.Size(111, 20);
+            this.txtParam13.Size = new System.Drawing.Size(46, 20);
             this.txtParam13.TabIndex = 6;
             this.txtParam13.Text = "3";
             this.txtParam13.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
@@ -1093,7 +1219,7 @@ namespace CT
             // label11
             // 
             this.label11.AutoSize = true;
-            this.label11.Location = new System.Drawing.Point(12, 67);
+            this.label11.Location = new System.Drawing.Point(6, 41);
             this.label11.Name = "label11";
             this.label11.Size = new System.Drawing.Size(109, 13);
             this.label11.TabIndex = 5;
@@ -1101,9 +1227,9 @@ namespace CT
             // 
             // txtParam12
             // 
-            this.txtParam12.Location = new System.Drawing.Point(14, 83);
+            this.txtParam12.Location = new System.Drawing.Point(121, 38);
             this.txtParam12.Name = "txtParam12";
-            this.txtParam12.Size = new System.Drawing.Size(111, 20);
+            this.txtParam12.Size = new System.Drawing.Size(30, 20);
             this.txtParam12.TabIndex = 4;
             this.txtParam12.Text = "50";
             this.txtParam12.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
@@ -1116,7 +1242,7 @@ namespace CT
             // label10
             // 
             this.label10.AutoSize = true;
-            this.label10.Location = new System.Drawing.Point(11, 18);
+            this.label10.Location = new System.Drawing.Point(6, 18);
             this.label10.Name = "label10";
             this.label10.Size = new System.Drawing.Size(97, 13);
             this.label10.TabIndex = 3;
@@ -1124,9 +1250,9 @@ namespace CT
             // 
             // txtParam11
             // 
-            this.txtParam11.Location = new System.Drawing.Point(14, 34);
+            this.txtParam11.Location = new System.Drawing.Point(105, 15);
             this.txtParam11.Name = "txtParam11";
-            this.txtParam11.Size = new System.Drawing.Size(111, 20);
+            this.txtParam11.Size = new System.Drawing.Size(46, 20);
             this.txtParam11.TabIndex = 2;
             this.txtParam11.Text = "3";
             this.txtParam11.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
@@ -1211,7 +1337,7 @@ namespace CT
             this.tabPageAlt.Controls.Add(this.groupBox4);
             this.tabPageAlt.Location = new System.Drawing.Point(4, 22);
             this.tabPageAlt.Name = "tabPageAlt";
-            this.tabPageAlt.Size = new System.Drawing.Size(713, 381);
+            this.tabPageAlt.Size = new System.Drawing.Size(732, 381);
             this.tabPageAlt.TabIndex = 2;
             this.tabPageAlt.Text = "Hardware";
             // 
@@ -1332,7 +1458,7 @@ namespace CT
             // 
             this.label5.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(21, 45);
+            this.label5.Location = new System.Drawing.Point(40, 45);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(58, 13);
             this.label5.TabIndex = 16;
@@ -1425,31 +1551,11 @@ namespace CT
             this.label14.Size = new System.Drawing.Size(0, 13);
             this.label14.TabIndex = 14;
             // 
-            // tnSayBuzzer
-            // 
-            this.tnSayBuzzer.Location = new System.Drawing.Point(270, 343);
-            this.tnSayBuzzer.Name = "tnSayBuzzer";
-            this.tnSayBuzzer.Size = new System.Drawing.Size(94, 24);
-            this.tnSayBuzzer.TabIndex = 29;
-            this.tnSayBuzzer.Text = "Say on Buzzer";
-            this.tnSayBuzzer.UseVisualStyleBackColor = true;
-            this.tnSayBuzzer.Click += new System.EventHandler(this.tnSayBuzzer_Click);
-            // 
-            // btnDTMF
-            // 
-            this.btnDTMF.Location = new System.Drawing.Point(377, 344);
-            this.btnDTMF.Name = "btnDTMF";
-            this.btnDTMF.Size = new System.Drawing.Size(93, 23);
-            this.btnDTMF.TabIndex = 30;
-            this.btnDTMF.Text = "Test DTMF";
-            this.btnDTMF.UseVisualStyleBackColor = true;
-            this.btnDTMF.Click += new System.EventHandler(this.btnDTMF_Click);
-            // 
             // CTool
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(724, 525);
+            this.ClientSize = new System.Drawing.Size(743, 525);
             this.Controls.Add(this.grpTLog);
             this.Controls.Add(this.lblRel);
             this.Controls.Add(this.btnDisconnect);
@@ -1476,10 +1582,14 @@ namespace CT
             this.groupBox2.PerformLayout();
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
+            this.groupBox6.ResumeLayout(false);
+            this.groupBox6.PerformLayout();
             this.groupBox8.ResumeLayout(false);
             this.groupBox8.PerformLayout();
             this.groupBox3.ResumeLayout(false);
             this.groupBox3.PerformLayout();
+            this.groupBox5.ResumeLayout(false);
+            this.groupBox5.PerformLayout();
             this.groupBoxRSSI.ResumeLayout(false);
             this.groupBoxRSSI.PerformLayout();
             this.tabPageAlt.ResumeLayout(false);
@@ -1588,7 +1698,6 @@ namespace CT
         private System.Windows.Forms.TextBox txtParam15;
         private System.Windows.Forms.ToolTip hint;
         private System.Windows.Forms.CheckBox chkParam17;
-        private System.Windows.Forms.CheckBox chkParam18;
         private System.Windows.Forms.Button btnSay;
         private System.Windows.Forms.Button btnBalance;
         private System.Windows.Forms.Button btnConsole;
@@ -1616,6 +1725,15 @@ namespace CT
         private System.Windows.Forms.Button btnGetSms;
         private System.Windows.Forms.Button tnSayBuzzer;
         private System.Windows.Forms.Button btnDTMF;
+        private System.Windows.Forms.GroupBox groupBox6;
+        private System.Windows.Forms.CheckBox chkParam18_5;
+        private System.Windows.Forms.CheckBox chkParam18_4;
+        private System.Windows.Forms.CheckBox chkParam18_3;
+        private System.Windows.Forms.GroupBox groupBox5;
+        private System.Windows.Forms.CheckBox chkParam18_2;
+        private System.Windows.Forms.CheckBox chkParam18_1;
+        private System.Windows.Forms.CheckBox chkParam18;
+        private System.Windows.Forms.Button btnMorze;
     }
 	
 }

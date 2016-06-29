@@ -1233,7 +1233,7 @@ void consoleCommands(){
 
 #if defined(USE_MORZE)
 			case 'v':
-			    static const PROGMEM char m_patt[]="cBeacon v" TO_STRING(RELEASE_NUM) " 0123456789#*";
+			    static const PROGMEM char m_patt[]="cBeacon v" TO_STRING2(RELEASE_NUM) " 0123456789#*";
 			    strcpy_P((char *)buf, m_patt);
 			    //strcat_P((char *)buf, v_patt); the same size
 			    morze.write((char *)buf);
@@ -1276,6 +1276,7 @@ DBG_PRINTVARLN((char *)buf);
 			    
 //			    gsm.end();	// всяко это потребуется только дома у компа, а значит потом передернут питание
 //DBG_PRINTLN("Exit terminal mode");
+			    gsm.pulseDTR();
 			    break;
 
 			case 'e': 	// send SMS
@@ -1301,11 +1302,11 @@ DBG_PRINTVARLN((char *)buf);
 		    } else { // new param value
 			byte *bp=buf+1;
 
-DBG_PRINTLN("set val");
-DBG_PRINTVARLN((char *)bp);
+//DBG_PRINTLN("set val");
+//DBG_PRINTVARLN((char *)bp);
 
 		        byte n=atol((char *)bp); // зачем еще и atoi тaщить
-DBG_PRINTVARLN(n);
+//DBG_PRINTVARLN(n);
 //		        if(n > sizeof(struct Params)/sizeof(long)) {
 		        if(n > PARAMS_END + sizeof(strParam)/sizeof(StrParam)) {
 			    break;
@@ -1330,22 +1331,23 @@ DBG_PRINTVARLN(n);
 			if(n<PARAMS_END) {	// numeric prams
 		    	    if(*bp) 
 		                ((long *)&p )[n] = atol((char *)bp); // если не пустая строка то преобразовать и занести в численный параметр
-DBG_PRINTLN("new n val");
-DBG_PRINTVARLN(((long *)&p )[n]);
+//DBG_PRINTLN("new n val");
+//DBG_PRINTVARLN(((long *)&p )[n]);
 
 		        } else  {		// string params
 		    	    n-=PARAMS_END;
 		    	    if(n<sizeof(strParam)/sizeof(StrParam)) { 
 		    		const StrParam *sp = &strParam[n];
 				strncpy((char *)pgm_read_word(&(sp->ptr)), (char *)bp, pgm_read_byte(&(sp->length))-1);	// занести как есть в строковый параметр
-DBG_PRINTLN("new s val");
-DBG_PRINTVARLN((char *)buf);
+//DBG_PRINTLN("new s val");
+//DBG_PRINTVARLN((char *)buf);
 //DBG_PRINTVARLN(s.length);
 			    }
-else {
+/* else {
     DBG_PRINTLN("skip s val");			    
     DBG_PRINTVARLN(n);
-}
+}*/
+
 			}
 		    }
 		}

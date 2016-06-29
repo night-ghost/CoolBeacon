@@ -34,7 +34,7 @@ extern SingleSerial serial;
 #include "gsm.h"
 
 
-//#define GSM_DEBUG 1
+#define GSM_DEBUG 1
 //#define USSD_DEBUG 1
 
 extern GSM gsm;
@@ -47,6 +47,7 @@ extern void delay_1();
 char GSM::response[RESPONCE_LENGTH];
 byte GSM::lastError=0;
 byte GSM::isTransparent=0;
+byte GSM::isActive=0;
 
 static const char PROGMEM s_cpin_q[]="+CPIN?";
 static const char PROGMEM s_creg_q[]="+CREG?";
@@ -70,10 +71,10 @@ void delay_1000(){
 }
 
 
-bool cregWait(){
+bool GSM::cregWait(){
     static const PROGMEM char patt_creg[]="CREG: 0,";
 
-    byte nTry=10;
+    byte nTry=60; // seconds
 
     while(nTry-- >0){
          byte f= GSM::command(s_creg_q, s_ok, patt_creg);   // NET registered?
@@ -87,51 +88,41 @@ bool cregWait(){
         switch(*(result2_ptr+sizeof(patt_creg)-1)){
     	case '1':	// registered or roaming
     	case '5':
-    	     break; 
-    	     
-        case '0':	//  not registered but searching
-        case '2':
-            delay_300();
-    	    continue; 
+    	     return true; 
         
         case '3':	//denied
             return false; 
             
+        case '0':	//  not registered but searching
+        case '2':
         default:
     	    delay_1000();// will wait
     	    continue;
         }
         break;// all loop done by continue;
     }
-    return true;
+    return false;
 }
 
 
-bool syncSpeed() {
+bool GSM::syncSpeed() {
     for(byte i=25;i!=0; i--)			// speed negotiation
-        if(GSM::command(PSTR(""), 1000) ) return true;
+        if(GSM::command(PSTR(""), 200) ) return true;
 
     return false;
 }
 
-void GSM::turnOff(){
-    power_timer1_enable();
-    AltSoftSerial::begin(GSM_SPEED);
-    //digitalWrite(GSM_EN,LOW);
-    syncSpeed();
-    GSM::command(PSTR("E0")); // ECHO off
-    end();
-}
 
-void pulseDTR(){
+void GSM::pulseDTR(){
     digitalWrite(GSM_DTR,LOW); // wake up
-    delay_10();
+    delay_300();
     digitalWrite(GSM_DTR,HIGH);
+    delay_100();
 }
 
-void pulseReset(){
+void GSM::pulseReset(){
     digitalWrite(GSM_EN,LOW);	// this is RESET
-    delay_300();
+    delay_1000();
     digitalWrite(GSM_EN,HIGH);
     delay_1000();
 
@@ -142,6 +133,8 @@ bool  GSM::begin(){
 }
 
 bool  GSM::begin(long speed){
+    if(isActive) return true;
+
     power_timer1_enable();
     AltSoftSerial::begin(speed);
 
@@ -154,14 +147,14 @@ bool  GSM::begin(long speed){
 
 	if(syncSpeed()){
 
-            GSM::command(PSTR("E0 V1 X1 S0=0")); // ECHO off, set error response and do not pickup on ring
-            GSM::command(PSTR("+CFUN=1")); // work  - +CFUN=1,1 to reset
+            command(PSTR("E0 V1 X1 S0=0")); // ECHO off, set error response and do not pickup on ring
+            command(PSTR("+CFUN=1")); // work  - +CFUN=1,1 to reset
 //	                GSM::command(PSTR("+CNETLIGHT=0")); // LED off
             /*GSM::command(PSTR("+GSMBUSY=1")) && */ // not receive VOICE calls
     
-            GSM::command(PSTR("+CSCB=1")); // запрет широковещательных уведомлений
+            command(PSTR("+CSCB=1")); // запрет широковещательных уведомлений
                 
-            f=      GSM::command(s_cpin_q,s_cpin_a); // SIM ok?
+            f=      command(s_cpin_q,s_cpin_a); // SIM ok?
 
     	// http://we.easyelectronics.ru/blog/part/369.html
 	// AT+CMGF
@@ -170,30 +163,48 @@ bool  GSM::begin(long speed){
 	// AT+CLIP=1 
 
 	    if(f) f=cregWait();
-            if(f) f=GSM::command(PSTR("+CCALR?"),PSTR("CCALR: 1"));   // CALL enabled?
+            if(f) f=command(PSTR("+CCALR?"),PSTR("CCALR: 1"));   // CALL enabled?
         
             if(f) break; // all OK
 	} else {
 	    pulseDTR();	    	
 	    pulseReset();
 	}
-        GSM::command(PSTR("+CFUN=1,1")); // reset
+        command(PSTR("+CFUN=1,1")); // reset
         for(byte i=5;i>0;i--)
             delay_1000();	// delay 5 seconds
         
     } while(try_count-- >0); /// максимальное время ожидания при отсутствии сети - 10 раз по (10 секунд плюс время ожидания команды), около 3 минут
 
+    if(f) {
+	isActive=true;
+    } else {    	//	так и не удалось разбудить
+	AltSoftSerial::end();
+        power_timer1_disable();
+    }
+
     return f;
+}
+
+void GSM::turnOff(){
+    power_timer1_enable();
+    AltSoftSerial::begin(GSM_SPEED);
+    //digitalWrite(GSM_EN,LOW);
+    syncSpeed();
+    command(PSTR("E0")); // ECHO off
+    end();
 }
 
 
 // закончили работу с GSM - выключим
 void GSM::end() {
-    GSM::command(PSTR("+CNETLIGHT=0"),1000); // LED off
-    GSM::command(PSTR("+CPOWD=1"),PSTR("DOWN"),1000); //power down
+    command(PSTR("+CNETLIGHT=0"),200); // LED off
+    command(PSTR("+CPOWD=1"),PSTR("DOWN"),200); //power down
 
     AltSoftSerial::end();
     power_timer1_disable();
+    isActive=false;
+
 }
 
 
@@ -216,8 +227,8 @@ void GSM::initGSM(void){
 
 bool GSM::set_sleep(byte mode){
     if(mode) {
-               GSM::command(PSTR("+CNETLIGHT=0")); // LED off
-	return GSM::command(PSTR("+CFUN=0")) // minimum func
+               command(PSTR("+CNETLIGHT=0")); // LED off
+	return command(PSTR("+CFUN=0")) // minimum func
 	    /*&& GSM::command(PSTR("+CSCLK=1"))*/; //  sleep - we can't wake up
     } else {
         pulseDTR();
@@ -226,9 +237,9 @@ bool GSM::set_sleep(byte mode){
         do {	       
             bool f = false;
 	    if(syncSpeed()){
-                   GSM::command(PSTR("+CNETLIGHT=1")); // LED on
-                f= GSM::command(PSTR("+CFUN=1")) && // work - +CFUN=1,1 to reset
-                   GSM::command(s_cpin_q,s_cpin_a) && // SIM ok?
+                   command(PSTR("+CNETLIGHT=1")); // LED on
+                f= command(PSTR("+CFUN=1")) && // work - +CFUN=1,1 to reset
+                   command(s_cpin_q,s_cpin_a) && // SIM ok?
                    cregWait();   // wait for NET registered
 		   
                 if(f) return f;
@@ -245,7 +256,7 @@ bool GSM::set_sleep(byte mode){
 }
 
 
-
+#if defined(USE_GPRS)
 void GSM::doOnDisconnect(){
     if(GSM::isTransparent) { // были в коннекте и что-то отвалилось
 	// надо сбросить модуль и уйти на setup()
@@ -259,6 +270,7 @@ void GSM::doOnDisconnect(){
         );
     }
 }
+#endif
 
 void GSM::readOut() { // Clean the input buffer from last answer and unsolicit answers
     char c;
@@ -273,13 +285,14 @@ serial.print_P(PSTR("< "));
 #ifdef GSM_DEBUG
 serial.print(c);	    
 #endif
+#if defined(USE_GPRS)
 	    *cp++=c;
 
             if((result_ptr=strstr_P(response, PSTR("DEACT"))) != NULL)  { // окончательная ошибка
                 doOnDisconnect();
 	    }
 	    if(c=='\n') cp = response;
-
+#endif
 	}
 	delay_10(); // wait for next char
     }
@@ -374,10 +387,11 @@ serial.print(c); if(c=='\n') serial.print('#');
 //serial.print_P(PSTR(" ERR"));
 #endif
                 }
-
+#if defined(USE_GPRS)
                 if((result_ptr=strstr_P(response, PSTR("DEACT"))) != NULL)  { // окончательная ошибка
                     doOnDisconnect();
 		}
+#endif
 /*
                 if(has_answer){ // ответ только что получен
 		    do {
@@ -701,22 +715,22 @@ bool GSM::initGPRS(){
 	gsm.command(PSTR("+CIPMUX=0"))&& // Single channel communication (ie only one socket can be opened)
 	gsm.command(PSTR("+CIPMODE=1"))&& // Transparent bridge mode
 	//                          NmRetry, WaitTm, SendSz, Esc. 
-	gsm.command(PSTR("+CIPCCFG=8,10,400,0,0,460,50")) && // GPRS params
+	gsm.command(PSTR("+CIPCCFG=8,10,400,0,0,460,50"));  // GPRS params
 	//                 mode,subset,portspeed(4->57600),frame size, ack time,
-	gsm.command(PSTR("+CMUX=0,0,4,32768,10,3,30,10,2")); // GPRS/IP params
+//	gsm.command(PSTR("+CMUX=0,0,4,32768,10,3,30,10,2")); // GPRS/IP params
 }
 
 bool GSM::setAPN(char *apn) {
     return 
-        gsm.command(PSTR("+CGATT?"),120000) && // Make sure GPRS is Attached
-        gsm.command(PSTR("+CSTT= \"internet\",\"\",\"\"")); // AT+CSTT="APN","username","password" - login to service provider/carrier
+        gsm.command(PSTR("+CGATT?"),PSTR("OK"),PSTR("CGATT: 1"),60000) && // Make sure GPRS is Attached
+        gsm.command(PSTR("+CSTT=\"internet\",\"\",\"\"")); // AT+CSTT="APN","username","password" - login to service provider/carrier
 }
 
 
 bool GSM::initUDP(uint16_t port){
     bool f=
-        gsm.command(PSTR("+CIICR")) && // Connect!
-        gsm.command(PSTR("+CIFSR"),"."); // Get IP address (for info only);
+        gsm.command(PSTR("+CIICR"),3000) && // Connect!
+        gsm.command(PSTR("+CIFSR"),PSTR("."),PSTR("OK")); // Get IP address (for info only);
     
     if(!f) return f;
     
@@ -737,7 +751,7 @@ bool GSM::connectUDP(char *url, uint16_t port){
     gsm.print_P(PSTR("\","));
     gsm.println(port);
     // AT+CIPSTART="protocol","ip address or domain","port #"
-    if(1==wait_answer(PSTR("OK"),1000)) {
+    if(1==wait_answer(PSTR("OK"),PSTR("CONNECT"),3000)) {
 	GSM::isTransparent=1;
 	return true;
     }
