@@ -49,7 +49,7 @@ again:
 	
 	// F_CPU   / BAUD for 115200 is 138
 	// 1000000 / BAUD for 115200 is 8.68uS
-	//  so I has no idea about pulse times - thease simply measured
+	//  so I has no idea about pulse times - they are simply measured
 	
 	    if(     pulse < 11) 	speed = 115200;
 	    else if(pulse < 19) 	speed =  57600;
@@ -70,4 +70,6 @@ again:
     return 0;
 }
 
-
+#if !defined(USE_MAVLINK) // we need  crc_init() and crc_accumulate()!
+ #include "../GCS_MAVLink/include/mavlink/v1.0/checksum.h"
+#endif

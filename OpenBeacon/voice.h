@@ -46,13 +46,15 @@ uint16_t adpcmDec(uint8_t sample_in, uint16_t sample_prev) {
     }
     sample_prev -= 32768; // restore sign
 
+    
     /* Find new quantizer step size by adding the old index and a table lookup using the ADPCM code */
-    index += pgm_read_byte(&adpcm_index_tab[sample_in & 0x7]);
+    int idx = index + pgm_read_byte(&adpcm_index_tab[sample_in & 0x7]);
 
     /* Check for overflow of the new quantizer step size index */
-    if      (index < 0)               index = 0;
-    else if (index > MAX_ADPCM_INDEX) index = MAX_ADPCM_INDEX;
+    if      (idx < 0)               idx = 0;
+    else if (idx > MAX_ADPCM_INDEX) idx = MAX_ADPCM_INDEX;
 
+    index=idx;
     return sample_prev;
 }
 
@@ -66,23 +68,39 @@ volatile byte inc;            // инкремент таймера 0 для об
 volatile byte fTone;          // тон а не речь - меняем значение ШИМ самостоятельно, отсчитывая полупериоды
 volatile byte fHalf;          // счет полупериодов
 
+
+// частота тиков 250Hkz
+// генерация задержек на системном таймере
 ISR(TIMER0_COMPA_vect) {
-    OCR0A = TCNT0 + inc; // отложим следующее прерывание
+    OCR0A = TCNT0 + inc; // отложим следующее прерывание на величину задержки
 
     if(fTone) {	//		если генерируем тон
 	OCR2A = (++fHalf & 1)?0x30:0xd0; // то новое значение задаем самостоятельно
 //	fHalf=!fHalf; 		// другой полупериод
+/* там и так это значение, ничего страшного
+#ifdef DO_DTMF
+    } else if(DTMF_enable){
+	// all done
+#endif
+*/
     } else {
 	OCR2A = voicePWM;        // записать новое значение ШИМ
     }
     fInt = 1; 		// было прерывание
+
+#if defined(DO_DTMF) && defined(DTMF_TIM0)
+    extern void do_DTMF();
+    extern volatile byte DTMF_enable;
+    if(DTMF_enable) do_DTMF(); // calculate next value
+#endif
+
 }
 
 // используется ТОЛЬКО изнутри формирования звука при включенном таймере
 
-//#define BEEP_TONE(freq) ((((1000000 + freq/2)/ freq +1 ) / 2 /* 2 periods */+2) / 4 /* 4 ms each tick */)
+//#define BEEP_TONE(freq) ((((1000000 + freq/2)/ freq +1 ) / 2 /* 2 periods */+2) / 4 /* 4 us each tick */)
 
-void beep(unsigned int t){
+void beep(unsigned int t){ // used also in DTMF
 #if 0
     byte a=0x30,c=0xd0;
 
@@ -96,7 +114,7 @@ void beep(unsigned int t){
         delayMicroseconds(180);
     }
 #else
-    inc=BEEP_TONE(2500); // 2500Hz
+    inc=BEEP_TONE(2500); // 2500Hz = 50 * 4uS
 //    inc=180/4;
 //DBG_PRINTVARLN(inc);
     fTone=true;
@@ -109,7 +127,7 @@ void beep(){
     beep(100); // 0.1s one Beep
 }
 
-void NOINLINE wave(int v){
+static void NOINLINE wave(int v){
     voicePWM = (byte)(v / 380  - 96);
     fInt=0; while(!fInt);	// wait for interrupt
 }
@@ -128,16 +146,13 @@ void _sendVOICE(char *s, byte beeps){
 
 // ШИМ частотой 16MHz / 256 = 62.5KHz (период 16мкс), значит одно значение ШИМ звучит 155/16 ~= 10 периодов
     TIMSK2 = (1<<OCIE2A) | (1<<TOIE2);  // Int T2 Overflow + Compare enabled
-    TCCR2A = (1<<WGM21) | (1<<WGM20);         // Fast PWM 
-    TCCR2B = (1<<CS20);                     // CLK/1 и режим Fast PWM
+    TCCR2A = (1<<WGM21) | (1<<WGM20);   // Fast PWM 
+    TCCR2B = (1<<CS20);                 // CLK/1 и режим Fast PWM
     OCR2A=0x0; // начальное значение компаратора
 
     
-//    uint16_t dly = (( p.SpeechRate + 1400 ) * 155L ) / 1500; // 155uS default 
-    uint16_t dly = (( p.SpeechRate + 1400 ) * 220L ) / 1500; // 220uS  - время расчета не входит в задержку
-//    inc = dly/4; // инкремент таймера 0 по 4 мкс - портится от beep
     
-    TIFR0  |= (1<<OCF0A);   // clear flag
+    TIFR0   = (1<<OCF0A);   // clear flag
     TIMSK0 |= (1<<OCIE0A);  // разрешим compare  interrupt - все время формирования голоса пусть тикает
 
 //beep(500);
@@ -179,6 +194,8 @@ void _sendVOICE(char *s, byte beeps){
 	    continue;
         }
 
+//    uint16_t dly = (( p.SpeechRate + 1400 ) * 155L ) / 1500; // 155uS default 
+        uint16_t dly = (( p.SpeechRate + 1400 ) * 220L ) / 1500; // 220uS  - время расчета не входит в задержку
         inc = dly/4; // инкремент таймера 0 по 4 мкс - портится от beep
     
 //	   voicePWM=0; - без него лучше

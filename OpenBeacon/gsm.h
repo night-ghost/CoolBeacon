@@ -9,11 +9,6 @@
 
 #define RESPONCE_LENGTH 200 // ответ на USSD бывает весьма длинным
 
-/*
-
-TODO: у нас никогда не бывает одновременной работы MAVlink и GSM - память можно объединить
-
-*/
 
 /*
 для работы с GSM используется слегка модифицированная библиотека AltSoftSerial
@@ -35,7 +30,7 @@ class GSM: public AltSoftSerial
     static bool begin(long speed);
     static void end();
 
-    static byte _write(uint8_t c);
+    static byte write_S(uint8_t c);
 
     static void initGSM(void);
     static void readOut(void);
@@ -63,8 +58,9 @@ class GSM: public AltSoftSerial
     static bool cregWait();
     static bool syncSpeed();
 
+    static inline void write_S(char b) { AltSoftSerial::write_S(b); }
 //  private:
-    static char response[RESPONCE_LENGTH];
+    static char GSM_response[RESPONCE_LENGTH];
     static byte lastError;
     static byte isTransparent;
     static byte isActive;

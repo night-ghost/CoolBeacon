@@ -25,12 +25,13 @@ Based on:
 
 Отличия от tBeacon:
 
-* понимает *только* MAVlink и предназначен для непосредственного подключения к контроллеру APM/PixHawk
+* понимает *только* один протокол и предназначен для непосредственного подключения к полетному контроллеру APM/PixHawk/INAV
 * пока подключен к борту не экономит энергию и получает через MAVlink не только координаты но и другую информацию
 * координаты перед сохранением в EEPROM фильтруются по минимальному расстоянию - зачем писАть стояние на месте?
 * умеет "разговаривать" не только по радио но и пищалкой, можно все предполетные разговоры пустить на нее
 * голос формируется по таймеру а не задержкой - получается гораздо чище
 * во всех режимах мощность радиопередачи автоматически регулируется по силе принимаемого сигнала
+* умеет дожидаться окончания немодулированной несущей перед включением передачи
 * после арма и до дизарма радио не включается вообще дабы не создавать помех
 * при дизарме в радиусе менее 10 метров от точки взлета маяк не срабатывает (кроме вызывного коий работает всегда)
 * при зафиксированном краше таймерный маяк включается сразу же, без задержки (если разрешен)
@@ -63,14 +64,15 @@ Based on:
 
 Differences from tBeacon:
 
-* Understands *only* MAVlink and is designed for direct connection to the controller APM / PixHawk
+* Understands *only* MAVlink/MSP/LTM and is designed for direct connection to the controller APM / PixHawk / INAV
 * When connected to the battery it no saves energy and gets through MAVlink not only coordinates but other information
 * Coordinates before storing the EEPROM are filtered by the minimum distance - why write standing still?
 * Knows how to "talk" not only to the radio but to buzzer, one can move all preflight "talks" to it
 * Voice formed by a timer rather than delay() - so is a much cleaner
 * In all operating power radio is automatically adjusted according to the strength of the received signal
+* Knows how to wait for the end of the unmodulated carrier before switching to transmission
 * After arm and up to disarm radio does not turn on at all - so as not to interfere
-* When disarming at a radius less than 10 meters from the point of takeoff the beacon does not turns on (except for the call mode which always works)
+* When disarming at a radius less than 10 meters from the point of arming the beacon does not turns on (except for the call mode which always works)
 * After crash timed beacon activated immediately, without delay (if enabled)
 * Beacon is able to operate GSM-module SIM800, and send an SMS with the coordinates of a crash landing (and in the air in case of emergency or decline triggered the parachute)
 * Control of the parachute rescue system (servo on CHUTE_PIN)
@@ -85,7 +87,7 @@ Removed:
 * No support for a direct connection to the GPS
 * No Auto protocol - always MAVlink/UAVtalk/MWII
 * No support callsign Morse code (although if anyone should something can be done easily and with the encoding on board)
-* There is no control the format of coordinates of the configurator - is given in the compile time
+* There is no control the format of coordinates of the configurator - it is given in the compile time
 * (Almost) do not have control of the pin connecting buzzer in ConfigTool - is given in compile time
 * No HighSavePower mode
 * There is no word "pinnacle" instead a double "beep"
@@ -95,10 +97,9 @@ v0.9
 Config Tool is working!
 
 
-
 to compile:
 
-
+download SingleSerial library from Github
 
 then add 
 

@@ -12,7 +12,7 @@
 
 
 
-
+#define DTMF_TIM0
 
 
 #define TELEMETRY_SPEED  57600  // How fast our MAVLink telemetry is coming to Serial port
@@ -50,13 +50,15 @@
 // ---------- Hardware section
 
 // номера ног вспышки и пищалки. Можно и без них (через конфигуратор), но при прямом указании лучше :)
-//#define FLASH_PIN 5  // 
-#define FLASH_PIN 12 // PB3
+//#define FLASH_PIN  mega's pin 15 12 // PB3
+#define FLASH_PIN 5 // pd9, MEGA's pin 9
 #define BUZZER_PIN 11 // PB4
 //#define BUZZER_PIN2 12 // PB3
 
 // нога фотовспышки. в отличие от FLASH_PIN вспыхивает не синхронно с пищалкой а один раз на цикл писка
-//#define STROBE_PIN 12 // 
+#define STROBE_PIN 12 // PB3 MEGA's pin 15
+// но вобщем-то это выход OC2A так что его можно подцепить напрямую ко входу внешней модуляции RFM22 
+
 
 #define BUZZER_PIN_PORT (PORTB) // порт и битовая маска ноги пищалки, значительно улучшает обработку прерывания (хотя можно и без них)
 #define BUZZER_PIN_BIT (_BV(PB4))
@@ -69,12 +71,12 @@
 
 // --------- GSM section
 
-#define GSM_DTR 6
+#define GSM_DTR  6
 #define GSM_RING 7
-#define GSM_TX 9
-#define GSM_RX 8
-#define GSM_EN 10
-#define GSM_INT PD3
+#define GSM_RX   8
+#define GSM_TX   9
+#define GSM_EN   10
+#define GSM_INT  PD3 // pin 1
 
 #define GSM_SPEED 38400// 9600 // 19200 //
 
@@ -91,7 +93,7 @@
 
 //-------- Chute section
 
-#define CHUTE_PIN 5 // нога 9, ШИМ
+#define CHUTE_PIN 5 // PD5 нога 9, ШИМ
 
 #define CHUTE_ON_COUNT 25 // сработка при количестве ошибок: 5 пакетов в секунду, 5 секунд
 #define CHUTE_MIN_ALT 700 // минимальная высота срабатывания парашюта, см
@@ -111,7 +113,7 @@ V digital input. SDN should be = 0 in all modes except Shutdown mode. When SDN =
 completely shutdown and the contents of the registers will be lost.
 --
 
-более того, нога 13 АТмеги это PB1 - OC1A, действительно выход аппаратного ШИМ, но таймер инициализируется так
+более того, нога 13 АТмеги (arduino pin 9) это PB1 - OC1A, действительно выход аппаратного ШИМ, но таймер инициализируется так
 TCCR1A = (1<<WGM10);
 то есть он не используется!!!
 
@@ -133,13 +135,13 @@ TCCR1A = (1<<WGM10);
   #define Green_LED_OFF  PORTB &= ~_BV(5);
 
   #define  nSEL_on (PORTD |= (1<<4)) //D4
-  #define  nSEL_off PORTD &= 0xEF //D4
-  #define  SCK_on PORTC |= (1<<2) //A2
-  #define  SCK_off PORTC &= 0xFB //A2
-  #define  SDI_on PORTC |= (1<<1) //A1
-  #define  SDI_off PORTC &= 0xFD //A1
-  #define  SDO_1 ((PINC & 0x01) != 0) //A0
-  #define  SDO_0 ((PINC & 0x01) == 0) //A0
+  #define  nSEL_off PORTD &= 0xEF    //D4  4, mega's pin 2
+  #define  SCK_on PORTC |= (1<<2)    //A2
+  #define  SCK_off PORTC &= 0xFB     //A2  16
+  #define  SDI_on PORTC |= (1<<1)    //A1
+  #define  SDI_off PORTC &= 0xFD     //A1  15
+  #define  SDO_1 ((PINC & 0x01) != 0) //A0 
+  #define  SDO_0 ((PINC & 0x01) == 0) //A0 14
   #define SDO_pin A0
   #define SDI_pin A1
   #define SCLK_pin A2
@@ -194,8 +196,10 @@ TCCR1A = (1<<WGM10);
   #define DBG_PRINTLN(x)     { serial.print_P(PSTR("#" x)); serial.println();  serial.wait();  } 
   #define DBG_PRINTVARLN(x)  { serial.write('#'); serial.print(#x); serial.print(": "); serial.println(x);  serial.wait();  }
   #define DBG_PRINTVAR(x)    { serial.write('#'); serial.print(#x); serial.print(": "); serial.print(x); serial.print(" ");  }
+  #define DBG_PRINTF(x,...)  { serial.printf_P(PSTR("#" x),## __VA_ARGS__); serial.wait();  }
 #else
   #define DBG_PRINTLN(x)     {}
   #define DBG_PRINTVAR(x)    {}
   #define DBG_PRINTVARLN(x)  {}
+  #define DBG_PRINTF(x,...)  {}
 #endif

@@ -85,6 +85,7 @@ bool read_mavlink(){
                 mav_alt_rel = (long)(mavlink_msg_vfr_hud_get_alt(&msg.m) * 100); //< Current altitude (MSL), in meters * 100
                 mav_climb = (long)(mavlink_msg_vfr_hud_get_climb(&msg.m) * 100); //< Current climb rate in meters/second * 100
     
+		extern void chute_got_climb();
                 chute_got_climb();
                 break;
 
@@ -94,6 +95,7 @@ bool read_mavlink(){
                 mav_pitch = ToDeg(mavlink_msg_attitude_get_pitch(&msg.m));
                 mav_roll = ToDeg(mavlink_msg_attitude_get_roll(&msg.m));
 
+		extern void chute_got_atti();
 		chute_got_atti();
                 break;
 
@@ -106,6 +108,7 @@ bool read_mavlink(){
 		mav_yacc = (int)(mavlink_msg_highres_imu_get_yacc(&msg.m) * 1000); ///< Y acceleration (m/s^2) * 1000
 		mav_zacc = (int)(mavlink_msg_highres_imu_get_zacc(&msg.m) * 1000); ///< Z acceleration (m/s^2) * 1000
 
+		extern void chute_got_imu();
 		chute_got_imu();
 		break;
 
@@ -114,6 +117,7 @@ bool read_mavlink(){
 //              xtrack_error = mavlink_msg_nav_controller_output_get_xtrack_error(&msg.m);
                 mav_alt_error = (long)(mavlink_msg_nav_controller_output_get_alt_error(&msg.m) * 100); // in meters * 100
     
+		extern void chute_got_alterr();
                 chute_got_alterr();
                 break;
 

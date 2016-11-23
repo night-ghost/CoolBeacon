@@ -7,7 +7,7 @@ version(){
 RELEASE='Released/FW'
 BUILD='OpenBeacon/build-atmega328'
 
-#[ -f $BUILD/OpenBeacon.hex ] && mv $BUILD/OpenBeacon.hex $RELEASE/OpenBeacon.`version`-release.hex
+[ -f $BUILD/OpenBeacon.hex ] && mv $BUILD/OpenBeacon.hex $RELEASE/OpenBeacon.`version`-release.hex
 
 rm -rf $BUILD
 rm -f latest.zip

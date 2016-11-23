@@ -126,7 +126,7 @@ void narcoleptic_sleep(uint8_t wdt_period,uint8_t sleep_mode) {
 #endif
 }
 
-void narcoleptic_sleep_down(uint8_t wdt_period ) {
+void narcoleptic_sleep(uint8_t wdt_period ) {
     narcoleptic_sleep(wdt_period,SLEEP_MODE_PWR_DOWN);
 }
 
@@ -146,14 +146,14 @@ static inline void narcoleptic_calibrate() {
     uint16_t OCR1Bcopy = OCR1B;
     uint16_t ICR1copy = ICR1;
     uint8_t TIMSK1copy = TIMSK1;
-    uint8_t TIFR1copy = TIFR1;
+//    uint8_t TIFR1copy = TIFR1;
 
     // Configure as simple count-up timer
     TCCR1A = 0;
     TCCR1B = 0;
     TCNT1 = 0;
     TIMSK1 = 0;
-    TIFR1 = 0;
+//    TIFR1 = 0;
     // Set clock to /64 (should take 15625 cycles at 16MHz clock)
     TCCR1B = _BV(CS11) | _BV(CS10);
     narcoleptic_sleep(WDTO_15MS,SLEEP_MODE_IDLE);   // SLEEEEEEEEEEEEEP
@@ -161,7 +161,7 @@ static inline void narcoleptic_calibrate() {
     TCCR1B = 0; // Stop clock immediately
 
     // Restore Timer 1
-    TIFR1 = TIFR1copy;
+//    TIFR1 = TIFR1copy; hardware reset-only register
     TIMSK1 = TIMSK1copy;
     ICR1 = ICR1copy;
     OCR1B = OCR1Bcopy;
@@ -179,19 +179,19 @@ static inline void narcoleptic_calibrate() {
 void doSleep(uint16_t sleep_periods){
     
     while (sleep_periods >= 512) {
-      narcoleptic_sleep_down(WDTO_8S);
+      narcoleptic_sleep(WDTO_8S);
       sleep_periods -= 512;
     }
 
-    if (sleep_periods & 256) narcoleptic_sleep_down(WDTO_4S);
-    if (sleep_periods & 128) narcoleptic_sleep_down(WDTO_2S);
-    if (sleep_periods & 64)  narcoleptic_sleep_down(WDTO_1S);
-    if (sleep_periods & 32)  narcoleptic_sleep_down(WDTO_500MS);
-    if (sleep_periods & 16)  narcoleptic_sleep_down(WDTO_250MS);
-    if (sleep_periods & 8)   narcoleptic_sleep_down(WDTO_120MS);
-    if (sleep_periods & 4)   narcoleptic_sleep_down(WDTO_60MS);
-    if (sleep_periods & 2)   narcoleptic_sleep_down(WDTO_30MS);
-    if (sleep_periods & 1)   narcoleptic_sleep_down(WDTO_15MS);
+    if (sleep_periods & 256) narcoleptic_sleep(WDTO_4S);
+    if (sleep_periods & 128) narcoleptic_sleep(WDTO_2S);
+    if (sleep_periods & 64)  narcoleptic_sleep(WDTO_1S);
+    if (sleep_periods & 32)  narcoleptic_sleep(WDTO_500MS);
+    if (sleep_periods & 16)  narcoleptic_sleep(WDTO_250MS);
+    if (sleep_periods & 8)   narcoleptic_sleep(WDTO_120MS);
+    if (sleep_periods & 4)   narcoleptic_sleep(WDTO_60MS);
+    if (sleep_periods & 2)   narcoleptic_sleep(WDTO_30MS);
+    if (sleep_periods & 1)   narcoleptic_sleep(WDTO_15MS);
 }
 
 void deepSleep(uint16_t milliseconds) {
@@ -218,19 +218,19 @@ void deepSleep(uint16_t milliseconds) {
     uint16_t sleep_periods = (microseconds - watchdogTime_us) / watchdogTime_us;
 
     while (sleep_periods >= 512) {
-      narcoleptic_sleep_down(WDTO_8S);
+      narcoleptic_sleep(WDTO_8S);
       sleep_periods -= 512;
     }
 
-    if (sleep_periods & 256) narcoleptic_sleep_down(WDTO_4S);
-    if (sleep_periods & 128) narcoleptic_sleep_down(WDTO_2S);
-    if (sleep_periods & 64)  narcoleptic_sleep_down(WDTO_1S);
-    if (sleep_periods & 32)  narcoleptic_sleep_down(WDTO_500MS);
-    if (sleep_periods & 16)  narcoleptic_sleep_down(WDTO_250MS);
-    if (sleep_periods & 8)   narcoleptic_sleep_down(WDTO_120MS);
-    if (sleep_periods & 4)   narcoleptic_sleep_down(WDTO_60MS);
-    if (sleep_periods & 2)   narcoleptic_sleep_down(WDTO_30MS);
-    if (sleep_periods & 1)   narcoleptic_sleep_down(WDTO_15MS);
+    if (sleep_periods & 256) narcoleptic_sleep(WDTO_4S);
+    if (sleep_periods & 128) narcoleptic_sleep(WDTO_2S);
+    if (sleep_periods & 64)  narcoleptic_sleep(WDTO_1S);
+    if (sleep_periods & 32)  narcoleptic_sleep(WDTO_500MS);
+    if (sleep_periods & 16)  narcoleptic_sleep(WDTO_250MS);
+    if (sleep_periods & 8)   narcoleptic_sleep(WDTO_120MS);
+    if (sleep_periods & 4)   narcoleptic_sleep(WDTO_60MS);
+    if (sleep_periods & 2)   narcoleptic_sleep(WDTO_30MS);
+    if (sleep_periods & 1)   narcoleptic_sleep(WDTO_15MS);
 */
 }
 

@@ -32,6 +32,7 @@ extern SingleSerial serial;
 
 #include "config.h"
 #include "gsm.h"
+#include "protocols.h"
 
 
 #define GSM_DEBUG 1
@@ -44,7 +45,8 @@ extern void delay_50();
 extern void delay_10();
 extern void delay_1();
 
-char GSM::response[RESPONCE_LENGTH];
+//char GSM::GSM_response[RESPONCE_LENGTH]; объединен с буфером протоколов телеметрии ибо маяк никогда не работает одновременно с протоколом
+#define GSM_response (msg.response)
 byte GSM::lastError=0;
 byte GSM::isTransparent=0;
 byte GSM::isActive=0;
@@ -62,9 +64,6 @@ GSM::GSM(){
 
 }
 
-byte GSM::_write(uint8_t c){
-    return gsm.write_S(c);
-}
 
 void delay_1000(){
     delay(1000);
@@ -274,7 +273,7 @@ void GSM::doOnDisconnect(){
 
 void GSM::readOut() { // Clean the input buffer from last answer and unsolicit answers
     char c;
-    char * cp = response;
+    char * cp = GSM_response;
 
     while( gsm.available_S()) {
 #ifdef GSM_DEBUG
@@ -288,10 +287,10 @@ serial.print(c);
 #if defined(USE_GPRS)
 	    *cp++=c;
 
-            if((result_ptr=strstr_P(response, PSTR("DEACT"))) != NULL)  { // окончательная ошибка
+            if((result_ptr=strstr_P(GSM_response, PSTR("DEACT"))) != NULL)  { // окончательная ошибка
                 doOnDisconnect();
 	    }
-	    if(c=='\n') cp = response;
+	    if(c=='\n') cp = GSM_response;
 #endif
 	}
 	delay_10(); // wait for next char
@@ -338,11 +337,10 @@ uint8_t GSM::command(const char* cmd, uint16_t time){
     return GSM::command(cmd, s_ok, time);
 }
 
-//"DEACT"
 
 
 uint8_t GSM::wait_answer(const char* answer, const char* answer2, unsigned int timeout){
-    char * cp = response;
+    char * cp = GSM_response;
     unsigned long deadtime = millis() + timeout;
     char has_answer=0;
     result2_ptr=0;
@@ -375,39 +373,27 @@ serial.print(c); if(c=='\n') serial.print('#');
 	    // данные закончились, можно и проверить, если еще ответ не получен
 	    if(!has_answer) { 
                 // check if the desired answer  is in the response of the module
-                if((result_ptr=strstr_P(response, answer)) != NULL)  { // окончательный ответ
+                if((result_ptr=strstr_P(GSM_response, answer)) != NULL)  { // окончательный ответ
                     has_answer = 1;
 #ifdef GSM_DEBUG
 //serial.print_P(PSTR("="));
 #endif
                 } else
-                if((result_ptr=strstr_P(response, PSTR("ERROR"))) != NULL)  { // окончательная ошибка
+                if((result_ptr=strstr_P(GSM_response, PSTR("ERROR"))) != NULL)  { // окончательная ошибка
                     has_answer = 3;
 #ifdef GSM_DEBUG
 //serial.print_P(PSTR(" ERR"));
 #endif
                 }
 #if defined(USE_GPRS)
-                if((result_ptr=strstr_P(response, PSTR("DEACT"))) != NULL)  { // окончательная ошибка
+                if((result_ptr=strstr_P(GSM_response, PSTR("DEACT"))) != NULL)  { // окончательная ошибка
                     doOnDisconnect();
 		}
 #endif
-/*
-                if(has_answer){ // ответ только что получен
-		    do {
-			while(gsm.available()) {
-        		    *cp++ = c = gsm.read();
-        		    *cp=0;
-//serial.print(c);
-			}
-			delay_10();
-		    } while(gsm.available());
-		}
-*/
             }
 
             if( answer2 !=NULL) {
-                result2_ptr=strstr_P(response, answer2); // промежуточный ответ
+                result2_ptr=strstr_P(GSM_response, answer2); // промежуточный ответ
                 hasAnswer2 = (result2_ptr!=0);
 #ifdef GSM_DEBUG
 //serial.printf_P(PSTR("#2< "),result2_ptr);
@@ -474,14 +460,14 @@ byte GSM::sendUSSD(uint16_t text) {
  
 again:
   gsm.print_P(PSTR("AT+CUSD=1,\""));
-  gsm.write(flg==0?'#':'*');
+  gsm.write_S(flg==0?'#':'*');
   gsm.print(text);
   gsm.println_P(PSTR("#\""));
 
 #if defined(USSD_DEBUG) && 0
 serial.print_P(PSTR("#USSD ["));
 serial.print_P(PSTR("AT+CUSD=1,\""));
-serial.write(flg==0?'#':'*');
+serial.write_S(flg==0?'#':'*');
 serial.print(text);
 serial.println_P(PSTR("#\""));
 serial.println_P(PSTR("#]"));
@@ -686,76 +672,4 @@ void gprs_point() {  //Процедура начальной инициализ�
     gsm.command(PSTR("+HTTPTERM"));    //остановить HTTP
 }
 #endif
-
-/*
-Для получения страницы по определенному URL нужно послать следующие команды:
-AT+SAPBR=1,1    //Открыть несущую (Carrier)
-AT+SAPBR=3,1,"CONTYPE","GPRS"   //тип подключения - GPRS
-AT+SAPBR=3,1,"APN","internet.beeline.ru" //APN, для Билайна - internet
-AT+HTTPINIT    //Инициализировать HTTP 
-AT+HTTPPARA="CID",1    //Carrier ID для использования.
-AT+HTTPPARA="URL","http:/????????.ru/gps_tracker/gps_tracker1.php?id_avto=?N&lat=XXXXXlon=YYYYY"    //Собственно URL, после sprintf с координатами
-AT+HTTPACTION=0    //Запросить данные методом GET
-AT+HTTPREAD   //дождаться ответа
-AT+HTTPTERM    //остановить HTTP
-*/
-
-
-bool GSM::initGPRS(){
-    return
-	gsm.command(PSTR("+CREG=2")) && // Enable network registration messages in extended format
-	gsm.command(PSTR("+CMEE=2")) && // enable CMEE error reporting in extended format
-	gsm.command(PSTR("+CR=1"))   && // enable intermediate result code
-	gsm.command(PSTR("+CRC=1"))  && // enable extended format of incoming call indicator
-	gsm.command(PSTR("+CSNS=4")) && // Single Numbering Scheme mode=data
-	gsm.command(PSTR("+CSMINS=1")) && // enable SIM status report
-	gsm.command(PSTR("+CSCLK=0")) && // disable slow clock
-	gsm.command(PSTR("+CIURC=1")) && // enable URC presentation
-	gsm.command(PSTR("+CGEREP=2"))&& // GPRS error reporting: 0 disable, 1 enable
-	gsm.command(PSTR("+CIPMUX=0"))&& // Single channel communication (ie only one socket can be opened)
-	gsm.command(PSTR("+CIPMODE=1"))&& // Transparent bridge mode
-	//                          NmRetry, WaitTm, SendSz, Esc. 
-	gsm.command(PSTR("+CIPCCFG=8,10,400,0,0,460,50"));  // GPRS params
-	//                 mode,subset,portspeed(4->57600),frame size, ack time,
-//	gsm.command(PSTR("+CMUX=0,0,4,32768,10,3,30,10,2")); // GPRS/IP params
-}
-
-bool GSM::setAPN(char *apn) {
-    return 
-        gsm.command(PSTR("+CGATT?"),PSTR("OK"),PSTR("CGATT: 1"),60000) && // Make sure GPRS is Attached
-        gsm.command(PSTR("+CSTT=\"internet\",\"\",\"\"")); // AT+CSTT="APN","username","password" - login to service provider/carrier
-}
-
-
-bool GSM::initUDP(uint16_t port){
-    bool f=
-        gsm.command(PSTR("+CIICR"),3000) && // Connect!
-        gsm.command(PSTR("+CIFSR"),PSTR("."),PSTR("OK")); // Get IP address (for info only);
-    
-    if(!f) return f;
-    
-    readOut();
-
-    gsm.print_P(PSTR("+CLPORT=\"UDP\",")); // Prep UDP Port 8888
-    gsm.println(port);
-
-    return 1==wait_answer(PSTR("OK"),1000);
-
-}
-
-bool GSM::connectUDP(char *url, uint16_t port){
-    readOut();
-
-    gsm.print_P(PSTR("+CIPSTART=\"UDP\",\""));
-    gsm.print(url);
-    gsm.print_P(PSTR("\","));
-    gsm.println(port);
-    // AT+CIPSTART="protocol","ip address or domain","port #"
-    if(1==wait_answer(PSTR("OK"),PSTR("CONNECT"),3000)) {
-	GSM::isTransparent=1;
-	return true;
-    }
-    return false;
-    
-}
 

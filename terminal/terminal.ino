@@ -129,10 +129,6 @@ void loop(void) {
     }
 
     if(serial.available()) {
-//	digitalWrite(GSM_DTR,LOW);
-//	delay(50);
-//	digitalWrite(GSM_DTR,HIGH);
-
 	while(serial.available()) {
 	    Green_LED_ON;
 	    gsm.write(serial.read());

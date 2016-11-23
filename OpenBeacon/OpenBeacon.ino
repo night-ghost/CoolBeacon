@@ -62,6 +62,8 @@ SingleSerialPort(serial);
 #include "vars.h"
 #include "eeprom.h"
 
+
+
 #if defined(USE_GSM)
 #include "gsm.h"
 GSM gsm;
@@ -69,9 +71,14 @@ GSM gsm;
 
 #include "chute.h"
 
+#if defined(USE_GSM)
+#include "gsm_core.h"
+#endif
+
 #include "protocols.h"
 
 #include "func.h"
+
 
 #if defined(USE_MORZE)
 #include "morseEnDecoder.h"
@@ -79,9 +86,6 @@ morseEncoder morze;
 #endif
 
 
-#ifdef USE_DTMF
-#include "dtmf.h"
-#endif
 
 
 void beepOnBuzzer(unsigned int length);
@@ -101,6 +105,10 @@ byte powerByRSSI();
 #include "rfm22b.h"
 #include "samples.h"
 #include "voice.h"
+
+#ifdef USE_DTMF
+#include "dtmf.h"
+#endif
 
 
 #if defined(USE_MAVLINK)
@@ -278,44 +286,31 @@ byte powerByRSSI() {
     return lastRSSI < 50 ? RFM_MAX_POWER : ((RFM_MAX_POWER + 5)*10 - lastRSSI) / 10; // 120
 }
 
-void sendVOICE(char *string, byte beeps)
-{
 
+void buzz_or_rfm(){
   if(!voiceOnBuzzer) {
 #if USE_MORZE
-    morze.flush(); // дождаться окончания передачи
+      morze.flush(); // дождаться окончания передачи
 #endif
 
-    RFM_set_TX();
+      RFM_set_TX();
 
-    delay_100();
+      delay_300(); // clear tone to open silencer
   }
-  _sendVOICE(string, beeps);
 
-  RFM_off();
 }
 
-// обработчик прерывания по получению вызова
-//void RFM22B_Int()
-//*
-#if IRQ_interrupt == 0
-ISR(INT0_vect)
-#else
-ISR(INT1_vect)
-#endif
-//*/
-{
-  byte reg=spiReadRegister(0x03); // bye-bye
-  reg=spiReadRegister(0x04);
+void sendVOICE(char *string, byte beeps){
 
-  if(reg & 64) { 	// ipreaval
-    preambleDetected = true;
-    preambleRSSI = spiReadRegister(0x26);
-  }
+    buzz_or_rfm();
+
+    _sendVOICE(string, beeps);
+
+    RFM_off();
 }
 
-// BuffStream
-BS bs;
+
+BS bs; // BuffStream
 
 
 #define MULTIPLIER 10000000 // ArduPilot uses coords in LONG  multiplied by this value
@@ -568,7 +563,7 @@ byte calibrate(){
      int16_t min=10000; // min
       
      byte pos=0;
-     byte deviation=0;
+
      byte good_count=0;
 
      for(byte deviation=0; deviation<128 ; deviation++){
@@ -1124,6 +1119,8 @@ inline void printAllParams(){
     serial.print_P(PSTR(">\n"));
 }
 
+static const char PROGMEM beacon_patt[] = "cBeacon ";
+
 void consoleCommands(){
         struct Params loc_p;
     
@@ -1136,10 +1133,9 @@ void consoleCommands(){
         serial.begin(TELEMETRY_SPEED);
 #endif
 
-        static const char PROGMEM patt[] = "cBeacon ";
 
-        serial.print_P(patt);
-        serial.print_P(PSTR(TO_STRING2(RELEASE_NUM)));
+        serial.print_P(beacon_patt);
+        serial.print_P(PSTR(TO_STRING(RELEASE_NUM)));
         serial.println();
 
         byte try_count=0;
@@ -1154,8 +1150,8 @@ void consoleCommands(){
 
 //		if(strncasecmp_P( buf, pat, sizeof(pat) )==0){
 
-	            if(cnt>=(sizeof(patt)-2)) break;
-		    byte p = pgm_read_byte(&patt[cnt]);
+	            if(cnt>=(sizeof(beacon_patt)-2)) break;
+		    byte p = pgm_read_byte(&beacon_patt[cnt]);
 	            if(c != p ) {
 	                cnt=0;
 //DBG_PRINTLN("skip");
@@ -1170,7 +1166,7 @@ void consoleCommands(){
 //DBG_PRINTLN("3s done");
 //DBG_PRINTVARLN(cnt);
     
-	    if(cnt == sizeof(patt)-2){
+	    if(cnt == sizeof(beacon_patt)-2){
 //DBG_PRINTLN("console OK");
 	        if(!is_eeprom_valid()) {
 //	            serial.print_P(PSTR("CRC!\n"));
@@ -1224,18 +1220,22 @@ void consoleCommands(){
 			    break;
 
 #if defined(USE_DTMF)
+			case 'l':
+			    voiceOnBuzzer = true;
 			case 'f':
-			    static const PROGMEM char d_patt[]="0123456789#*";
+			    //static const PROGMEM char d_patt[]="0123456789#*";
 			    strcpy_P((char *)buf, v_patt);
-			    sendDTMF((char *)buf);
+			    sendDTMF((char *)buf, 2);
+			    voiceOnBuzzer = false;
 			    break;
 #endif
 
 #if defined(USE_MORZE)
 			case 'v':
-			    static const PROGMEM char m_patt[]="cBeacon v" TO_STRING2(RELEASE_NUM) " 0123456789#*";
-			    strcpy_P((char *)buf, m_patt);
-			    //strcat_P((char *)buf, v_patt); the same size
+			    static const PROGMEM char m_patt[]=" v" TO_STRING(RELEASE_NUM) " ";
+			    strcpy_P((char *)buf, beacon_patt);
+			    strcat_P((char *)buf, m_patt); 
+			    strcat_P((char *)buf, v_patt); 
 			    morze.write((char *)buf);
 			    morze.flush();
 			    break;
@@ -1279,6 +1279,8 @@ DBG_PRINTVARLN((char *)buf);
 			    gsm.pulseDTR();
 			    break;
 
+ #if 1 // debug and testing only
+
 			case 'e': 	// send SMS
 			    if(gsm.begin()) {
 				bs.begin((char *)buf);
@@ -1295,7 +1297,7 @@ DBG_PRINTVARLN((char *)buf);
     			    } else 
     				print_SNS(PSTR("ERROR="),gsm.lastError,PSTR("\n"));
 			    break;
-
+ #endif
 #endif
 
 			}
@@ -1318,12 +1320,6 @@ DBG_PRINTVARLN((char *)buf);
 			else
 			    fmt=PSTR("S");
 			
-		/* format changed! line in form Rn=val
-			print_SNS(fmt,n, PSTR("="));
-			serial.println();
-		    
-		        getSerialLine(buf); // new data
-		*/
 			while(*bp) {
 			    if(*bp++ == '=') break;
 			}
@@ -1344,7 +1340,7 @@ DBG_PRINTVARLN((char *)buf);
 //DBG_PRINTVARLN(s.length);
 			    }
 /* else {
-    DBG_PRINTLN("skip s val");			    
+    DBG_PRINTLN("skip s val");
     DBG_PRINTVARLN(n);
 }*/
 
@@ -1355,14 +1351,14 @@ DBG_PRINTVARLN((char *)buf);
 	        if(is_eeprom_valid()){
 		    Read_EEPROM_Config();
 
-//		    DBG_PRINTLN("load EEPROM OK");
+//    DBG_PRINTLN("load EEPROM OK");
 		    break;
 	        }
 		if(try_count>=20) {
 		    write_Params_ram_to_EEPROM();
 		    break;
 		}
-//	        DBG_PRINTLN("Wait command EEPROM bad");
+//   DBG_PRINTLN("Wait command EEPROM bad");
 		for(byte i=3; i>0; i--){
 		    Red_LED_OFF;
 		    delay_300();
@@ -1383,6 +1379,11 @@ console_done:
 #endif
 }
 
+void green_blink(){
+    Green_LED_ON;
+    delay_1();
+    Green_LED_OFF;
+}
 
 void setup(void) {
     wdt_disable();
@@ -1431,7 +1432,7 @@ void setup(void) {
     serial.begin(TELEMETRY_SPEED);
 #endif  
 
-    RFM_off();
+    RFM_off(1);
 
     initBuzzer();
 
@@ -1482,7 +1483,7 @@ DBG_PRINTLN("GSM OK");
 	if(lflags.gsm_ok) gsm.set_sleep(true); // sleep mode
 	else		  gsm.end();		// turn off
     } else { // питания нет - например был краш и маяк обесточивался, просто выключим модуль чтоб не жрал
-	gsm.turnOff();    
+	gsm.turnOff();
     }
 #endif
 
@@ -1534,14 +1535,6 @@ DBG_PRINTLN("GSM OK");
 
 #endif
     RFM_off();
-
-
-// тест генератора морзянки
-#if USE_MORZE && 0
-    morze.write("cq CQ test beacon 54.54");
-    morze.flush(); // дождаться окончания передачи
-#endif
-
 
     if(vcc){
 //	if(vcc>4200) vcc=4200; будем честными, можно и не от батареи работать
@@ -1615,9 +1608,7 @@ void loop(void) {
    
 //   if(uptime < 60 * 60 * 8) {// 8 часов
     if(uptime < 60 * 10) {// 10 минут, только в начале полета
-	Green_LED_ON;
-	delay_1();
-	Green_LED_OFF;
+	green_blink();
     }
     
 
@@ -2020,7 +2011,7 @@ DBG_PRINTLN("MAVLINK coords");
 
 
 #if USE_MORZE
-    morze.encode();	// выдача морзянки идет по прерыванием, а вот для загрузки и кодирования символов надо периодически дергать эту функцию
+    //теперь все по прерываниям! -  morze.encode();	// выдача морзянки идет по прерыванием, а вот для загрузки и кодирования символов надо периодически дергать эту функцию
 
     if(morze.gotCall() ) {   // Поймали вызов при передаче 
 	goto morzeGotCall;

@@ -112,26 +112,28 @@ volatile bool fListen; // флаг "передача кончилась, мож�
 ISR(TIMER0_COMPB_vect) { 
     periods++;
 
-    doSignals();
+    morseEncoder::doSignals();
 }
 
 
-void doSignals() {
+void morseEncoder::doSignals() {
     uint32_t currentTime = periods;
 
-    if (morseEncoder::sendingMorseSignalNr == 0 ) {
+    if (sendingMorseSignalNr == 0 ) {
     //	вобщем-то можно прямтут и подготовить новый символ, разрешив прерывания
+	sei();
+        encode();
 	return; // character done
     }
 
-    uint16_t diff = currentTime - morseEncoder::sendMorseTimer; // надолго промахнуться не должны
+    uint16_t diff = currentTime - sendMorseTimer; // надолго промахнуться не должны
 
 //DBG_PRINTVARLN(diff);
 
 
-    volatile char& currSignalType = morseEncoder::morseSignalString[morseEncoder::sendingMorseSignalNr-1];
+    volatile char& currSignalType = morseSignalString[sendingMorseSignalNr-1];
 
-    bool endOfChar = morseEncoder::sendingMorseSignalNr <= 1;
+    bool endOfChar = sendingMorseSignalNr <= 1;
 
 //DBG_PRINTVARLN(currSignalType);
     
@@ -160,10 +162,10 @@ off:      fTone=false;
           }
         } else {     // Pause between letters
           if (diff >= DASH_TIME)    {
-next:       morseEncoder::sendingMorseSignalNr--;
-	    if(morseEncoder::sendingMorseSignalNr <= 1) fListen=true;
+next:       sendingMorseSignalNr--;
+	    if(sendingMorseSignalNr <= 1) fListen=true;
 
-res:        morseEncoder::sendMorseTimer = currentTime;       // reset the timer
+res:        sendMorseTimer = currentTime;       // reset the timer
           }
         }
         break;
@@ -171,14 +173,14 @@ res:        morseEncoder::sendMorseTimer = currentTime;       // reset the timer
       case ' ': // Pause between words (minus pause between letters - already sent)
       default:  // Just in case its something else
         if (diff > WORD_SPACE - DASH_TIME)
-	    morseEncoder::sendingMorseSignalNr--;
+	    sendingMorseSignalNr--;
     }
     
 }
 
 void morseEncoder::flush() {
     while(!available()) {
-	encode();
+	// encode(); in interrupt
 	redBlink();
 	delay_50();
     }
@@ -210,7 +212,7 @@ DBG_PRINTLN("morze call!");
 	        goto prepare; // есть продолжение
 	    } else  { // nothing to send
 stop:
-                morseEncoder::sendingMorse = false; // all finished
+                sendingMorse = false; // all finished
 		RFM_off();
 
 //DBG_PRINTLN("morze stop");
@@ -310,7 +312,7 @@ prepare:
 	        TCCR2A = (1<<WGM21) | (1<<WGM20);       // Fast PWM.
 	        TCCR2B = (1<<CS20);                     // CLK/1 и режим Fast PWM
 // зачем мешать естественному ходу вещей?    OCR0B = TCNT0;   // отложим прерывание на нужное время
-	        TIFR0  |= (1<<OCF0B)  | (1<<OCF0A);     // clear flags
+	        TIFR0   = (1<<OCF0B)  | (1<<OCF0A);     // clear flags
 	        TIMSK0 |= (1<<OCIE0B) | (1<<OCIE0A);    // разрешим compare  interrupt
 	        OCR2A=0x0; // начальное значение компаратора
 

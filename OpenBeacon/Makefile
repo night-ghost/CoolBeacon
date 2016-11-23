@@ -12,13 +12,14 @@ F_CPU = 16000000
 
 
 OPT  = -ffast-math 
-OPT += -floop-strip-mine
+#OPT += -floop-strip-mine
 OPT += -finline-functions-called-once 
 OPT += -finline-small-functions
 OPT += -fmerge-all-constants
 OPT += -fomit-frame-pointer 
 OPT += -fno-optimize-sibling-calls 
 OPT += -fno-early-inlining 
+OPT += -fno-aggressive-loop-optimizations
 #OPT += -fmodulo-sched 
 #OPT += -fmodulo-sched-allow-regmoves 
 #OPT += -fassociative-math
@@ -60,14 +61,17 @@ OPT += -fno-early-inlining
 
 #OPT += -v -save-temps # for GCC bugreport
 
-OPT +=  -fno-caller-saves
+#OPT +=  -fno-caller-saves
+OPT +=  -mcall-prologues
+
 
 OPT += $(PROTO)
 
 ARDUINO_HEADER = dummy_header.h
 USER_LIB_PATH =  ../libraries
-CXXFLAGS_STD = -Wno-deprecated-declarations -std=gnu++11  -fno-exceptions -Wl,--gc-sections -fno-threadsafe-statics $(OPT) -Wl,--relax -felide-constructors -std=c++0x
-CFLAGS_STD =  -fno-exceptions  -Wl,--gc-sections  $(OPT) -Wl,--relax 
+CXXFLAGS_STD = -Wno-deprecated-declarations -std=gnu++11  -fno-exceptions -Wl,--gc-sections -fno-threadsafe-statics $(OPT) -felide-constructors -std=c++0x  -mrelax
+CFLAGS_STD =  -fno-exceptions  -Wl,--gc-sections  $(OPT) -mrelax
+#-Wl,--relax 
 LDFLAGS = -Wl,--relax
 MCU=atmega328p
 

@@ -129,7 +129,7 @@ byte control_loss_count;   // number of iterations we have been out of control
 
 
 
-void chute_lost() {
+static void chute_lost() {
     if(!lflags.motor_armed) {
 	control_loss_count=0;
 	return;
@@ -231,5 +231,6 @@ mav_alt_error // in meters * 100
 	chute_lost();
     }
 }
+
 
 

@@ -1,3 +1,4 @@
+#pragma once
 
 typedef char prog_char;
 
@@ -16,12 +17,12 @@ typedef char prog_char;
 
 #define BYTE_OF(v,n) (((byte *)&(v))[n])
 
-#define INLINE __attribute__ ((always_inline))
+#define INLINE __attribute__ ((always_inline)) inline
 #define WEAK __attribute__((weak))
 
-#define TO_STRING(x) #x
+#define TO_STRING2(x) #x
 
-#define TO_STRING2(x) TO_STRING(x)
+#define TO_STRING(x) TO_STRING2(x)
 
 inline bool timeToScreen() { return false; } // compatibility with OSD code
 

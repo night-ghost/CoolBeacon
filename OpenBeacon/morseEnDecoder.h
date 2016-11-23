@@ -38,6 +38,8 @@ class morseEncoder
 
     static volatile byte sendingMorseSignalNr;
     static uint32_t sendMorseTimer;
+    
+    static void doSignals();
 };
 
 

@@ -1,3 +1,5 @@
+#pragma once
+
 #if defined(USE_MAVLINK)
 #include "../GCS_MAVLink/include/mavlink/v1.0/mavlink_types.h"
 #endif
@@ -16,6 +18,9 @@
 #include "protocols/LTM.h"
 #endif
 
+
+#include "gsm.h"
+
 #define MAVLINK_EXTERNAL_RX_BUFFER 1
 #define m_mavlink_message 1
 
@@ -33,10 +38,11 @@ union {
 #if defined(USE_LTM)
     LTM ltm;
 #endif
+    char response[RESPONCE_LENGTH];
+
 } msg;
 
 
-//mavlink_message_t *m_mavlink_buffer = &msg.mv.m;
 
 #if defined(USE_MAVLINK)
 #define  m_mavlink_buffer (&msg.m)

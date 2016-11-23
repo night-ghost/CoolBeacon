@@ -36,12 +36,34 @@ ISR(TIMER2_COMPA_vect) {
 ISR(TIMER2_OVF_vect)  {
     
     SDI_on;
-#ifdef DO_DTMF
-    DO_DTMF;
+    if(voiceOnBuzzer) BUZZER_LOW;
+
+#if defined(USE_DTMF) && !defined(DTMF_TIM0)
+    extern void do_DTMF();
+    extern volatile byte DTMF_enable;
+    if(DTMF_enable) do_DTMF(); // calculate next value
 #endif
 
-    if(voiceOnBuzzer) BUZZER_LOW;
-    
+
+}
+
+// обработчик прерывания по получению вызова
+//void RFM22B_Int()
+//*
+#if IRQ_interrupt == 0
+ISR(INT0_vect)
+#else
+ISR(INT1_vect)
+#endif
+//*/
+{
+  volatile byte reg=spiReadRegister(0x03); // bye-bye
+  reg=spiReadRegister(0x04);
+
+  if(reg & 64) { 	// ipreaval
+    preambleDetected = true;
+    preambleRSSI = spiReadRegister(0x26);
+  }
 }
 
 
@@ -199,7 +221,7 @@ void initRFM(void)
 	 0x79, 0 ,	// start channel
 	 0x7a, 0x05 ,   // 50khz step size (10khz x value) // no hopping
 	 0x70, 0x24 ,	// disable manchester
-	 0x71, 0x12 ,	// trclk=[00] no clock, dtmod=[01] direct using SPI, fd8=0 eninv=0 modtyp=[10] FSK  - 
+	 0x71, 0x12 ,	// trclk=[00] no clock, dtmod=[01] direct using SPI SDI, fd8=0 eninv=0 modtyp=[10] FSK  - 
 
 // fd[7] fd[6] fd[5] fd[4] fd[3] fd[2] fd[1] fd[0] 
 	 0x72, 0x08 ,	// fd (frequency deviation) 8*625Hz == 5.0kHz
@@ -357,15 +379,17 @@ void RFM_tx_min(){
     RFM_SetPower(RF22B_PWRSTATE_TX, RFM_MIN_POWER );
 }
 
-void RFM_off(void)
+void RFM_off(byte force)
 {  // TODO: SDN mangling in the future
-  if(lflags.rfm_on)
+  if(lflags.rfm_on || force)
     spiWriteRegister(0x07, RF22B_PWRSTATE_POWERDOWN);
   lflags.rfm_on=false;
 //DBG_PRINTLN("RFM off");
-
 }
 
+void RFM_off(){
+    RFM_off(0);
+}
 
 void sendBeacon(void)
 {
