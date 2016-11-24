@@ -160,6 +160,7 @@ namespace CT
             this.lblTLog = new System.Windows.Forms.Label();
             this.btnTLog = new System.Windows.Forms.Button();
             this.label14 = new System.Windows.Forms.Label();
+            this.btnBuzDTMF = new System.Windows.Forms.Button();
             this.statusStrip1.SuspendLayout();
             this.menuStrip1.SuspendLayout();
             this.PANEL_tabs.SuspendLayout();
@@ -355,6 +356,7 @@ namespace CT
             // 
             // tabPageConfig
             // 
+            this.tabPageConfig.Controls.Add(this.btnBuzDTMF);
             this.tabPageConfig.Controls.Add(this.btnMorze);
             this.tabPageConfig.Controls.Add(this.btnDTMF);
             this.tabPageConfig.Controls.Add(this.tnSayBuzzer);
@@ -377,7 +379,7 @@ namespace CT
             // 
             // btnMorze
             // 
-            this.btnMorze.Location = new System.Drawing.Point(469, 343);
+            this.btnMorze.Location = new System.Drawing.Point(481, 343);
             this.btnMorze.Name = "btnMorze";
             this.btnMorze.Size = new System.Drawing.Size(84, 24);
             this.btnMorze.TabIndex = 31;
@@ -387,9 +389,9 @@ namespace CT
             // 
             // btnDTMF
             // 
-            this.btnDTMF.Location = new System.Drawing.Point(370, 343);
+            this.btnDTMF.Location = new System.Drawing.Point(298, 343);
             this.btnDTMF.Name = "btnDTMF";
-            this.btnDTMF.Size = new System.Drawing.Size(93, 24);
+            this.btnDTMF.Size = new System.Drawing.Size(74, 24);
             this.btnDTMF.TabIndex = 30;
             this.btnDTMF.Text = "Test DTMF";
             this.btnDTMF.UseVisualStyleBackColor = true;
@@ -397,9 +399,9 @@ namespace CT
             // 
             // tnSayBuzzer
             // 
-            this.tnSayBuzzer.Location = new System.Drawing.Point(270, 343);
+            this.tnSayBuzzer.Location = new System.Drawing.Point(205, 343);
             this.tnSayBuzzer.Name = "tnSayBuzzer";
-            this.tnSayBuzzer.Size = new System.Drawing.Size(94, 24);
+            this.tnSayBuzzer.Size = new System.Drawing.Size(87, 24);
             this.tnSayBuzzer.TabIndex = 29;
             this.tnSayBuzzer.Text = "Say on Buzzer";
             this.tnSayBuzzer.UseVisualStyleBackColor = true;
@@ -419,9 +421,9 @@ namespace CT
             // 
             // btnTrack
             // 
-            this.btnTrack.Location = new System.Drawing.Point(123, 343);
+            this.btnTrack.Location = new System.Drawing.Point(97, 343);
             this.btnTrack.Name = "btnTrack";
-            this.btnTrack.Size = new System.Drawing.Size(115, 25);
+            this.btnTrack.Size = new System.Drawing.Size(95, 25);
             this.btnTrack.TabIndex = 14;
             this.btnTrack.Text = "Download track";
             this.hint.SetToolTip(this.btnTrack, "Downloa last points saved in beacon");
@@ -432,7 +434,7 @@ namespace CT
             // 
             this.btnCalibrate.Location = new System.Drawing.Point(17, 343);
             this.btnCalibrate.Name = "btnCalibrate";
-            this.btnCalibrate.Size = new System.Drawing.Size(97, 25);
+            this.btnCalibrate.Size = new System.Drawing.Size(73, 25);
             this.btnCalibrate.TabIndex = 13;
             this.btnCalibrate.Text = "Calibrate";
             this.hint.SetToolTip(this.btnCalibrate, "Frequency calibration. \"Make a transceiver with Tone Burst ready and set it on th" +
@@ -1551,6 +1553,16 @@ namespace CT
             this.label14.Size = new System.Drawing.Size(0, 13);
             this.label14.TabIndex = 14;
             // 
+            // btnBuzDTMF
+            // 
+            this.btnBuzDTMF.Location = new System.Drawing.Point(377, 343);
+            this.btnBuzDTMF.Name = "btnBuzDTMF";
+            this.btnBuzDTMF.Size = new System.Drawing.Size(98, 24);
+            this.btnBuzDTMF.TabIndex = 32;
+            this.btnBuzDTMF.Text = "DTMF on buzzer";
+            this.btnBuzDTMF.UseVisualStyleBackColor = true;
+            this.btnBuzDTMF.Click += new System.EventHandler(this.btnBuzDTMF_Click);
+            // 
             // CTool
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -1734,6 +1746,7 @@ namespace CT
         private System.Windows.Forms.CheckBox chkParam18_1;
         private System.Windows.Forms.CheckBox chkParam18;
         private System.Windows.Forms.Button btnMorze;
+        private System.Windows.Forms.Button btnBuzDTMF;
     }
 	
 }

@@ -227,7 +227,7 @@ namespace CT {
                     int length = Convert.ToInt32(line.Substring(1, 2), 16);
                     int address = Convert.ToInt32(line.Substring(3, 4), 16);
                     int option = Convert.ToInt32(line.Substring(7, 2), 16);
-                    Console.WriteLine("len {0} add {1} opt {2}", length, address, option);
+                    //Console.WriteLine("len {0} add {1} opt {2}", length, address, option);
 
                     if (option == 0) {
                         string data = line.Substring(9, length * 2);
@@ -1267,7 +1267,7 @@ namespace CT {
 
                 sp = new ArduinoSTK();
                 sp.PortName = CMB_ComPort.Text;
-                sp.BaudRate = 57600;
+                sp.BaudRate = 115200;//for Optiboot, or 57600 for original boot
                 sp.DataBits = 8;
                 sp.StopBits = StopBits.One;
                 sp.Parity = Parity.None;
@@ -1750,7 +1750,11 @@ namespace CT {
             while (true) {
                 if (!waitComAnswer("timeout"))
                     return "";
-                s = delCr(comPort.ReadLine());
+                try {
+                    s = delCr(comPort.ReadLine());
+                } catch{
+                     s="";
+                }
                 if(s=="") continue;
                 if (s[0] == '#') {// skip debug messages
                     parseInput(s);
@@ -1874,10 +1878,8 @@ namespace CT {
             System.Threading.Thread.Sleep(t);
         }
 
-        int millis(){
-            System.DateTime moment = DateTime.UtcNow;
-            
-            return moment.Millisecond;
+        double millis(){
+             return (DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalMilliseconds;
         }
 
         private void btnDisconnect_Click(object sender, EventArgs e) {
@@ -1933,6 +1935,9 @@ namespace CT {
 
         private void btnDTMF_Click(object sender, EventArgs e) {
             beaconCommand('f');
+        }
+        private void btnBuzDTMF_Click(object sender, EventArgs e) {
+            beaconCommand('l');
         }
 
         private void btnBeep_Click(object sender, EventArgs e) {
@@ -1999,7 +2004,7 @@ namespace CT {
 
             
 
-            int deadtime = millis() + timeout;
+            double deadtime = millis() + timeout;
             int has_answer=0;            
             int result2_ptr=0;
     
@@ -2461,6 +2466,8 @@ as_number:
             
 
         }
+
+       
 
     
 

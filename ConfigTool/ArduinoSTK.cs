@@ -45,20 +45,17 @@ namespace ArdupilotMega
                 return false;
             }
             int a = 0;
-            while (a < 50)
-            {
+            while (a < 50)  {
                 this.DiscardInBuffer();
                 this.Write(new byte[] { (byte)'0', (byte)' ' }, 0, 2);
                 a++;
                 Thread.Sleep(50);
 
                 Console.WriteLine("btr {0}", this.BytesToRead);
-                if (this.BytesToRead >= 2)
-                {
+                if (this.BytesToRead >= 2)   {
                     byte b1 = (byte)this.ReadByte();
                     byte b2 = (byte)this.ReadByte();
-                    if (b1 == 0x14 && b2 == 0x10)
-                    {
+                    if (b1 == 0x14 && b2 == 0x10) {
                         return true;
                     }
                 }
@@ -85,36 +82,32 @@ namespace ArdupilotMega
         /// <returns>true = passed, false = failed</returns>
         public bool sync()
         {
-            if (!this.IsOpen)
-            {
+            if (!this.IsOpen)  {
                 return false;
             }
             this.ReadTimeout = 1000; 
             int f = 0;
-            while (this.BytesToRead < 1)
-            {
+            while (this.BytesToRead < 1){
                 f++;
                 System.Threading.Thread.Sleep(1); 
                 if (f > 1000)
-                    //Console.WriteLine("no sync timeout (no data received)");
+                    Console.WriteLine("no sync timeout (no data received)");
                     return false;
             }
             int a = 0;
-            while (a < 10)
-            {
-                if (this.BytesToRead >= 2)
-                {
+            while (a < 50){
+                Console.WriteLine("btr {0}", this.BytesToRead);
+                if (this.BytesToRead >= 2){
                     byte b1 = (byte)this.ReadByte();
                     byte b2 = (byte)this.ReadByte();
                     Console.WriteLine("bytes {0:X} {1:X}", b1, b2);
 
-                    if (b1 == 0x14 && b2 == 0x10)
-                    {
+                    if (b1 == 0x14 && b2 == 0x10){
                         return true;
                     }
                 }
-                Console.WriteLine("btr {0}", this.BytesToRead);
-                Thread.Sleep(20); //before 10
+                
+                Thread.Sleep(10); 
                 a++;
             }
             return false;
@@ -257,8 +250,7 @@ namespace ArdupilotMega
                 if (Progress != null)
                     Progress((int)(((float)startaddress / (float)length) * 100));
 
-                if (!sync())
-                {
+                if (!sync()) {
                     Console.WriteLine("No Sync");
                     Progress(0); //reset progress bar
                     return false;

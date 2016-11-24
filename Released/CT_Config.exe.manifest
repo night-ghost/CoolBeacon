@@ -58,14 +58,14 @@
     </dependentAssembly>
   </dependency>
   <dependency>
-    <dependentAssembly dependencyType="install" allowDelayedBinding="true" codebase="CT_Config.exe" size="190464">
+    <dependentAssembly dependencyType="install" allowDelayedBinding="true" codebase="CT_Config.exe" size="193024">
       <assemblyIdentity name="CT_Config" version="2.4.1.2" publicKeyToken="02E7DCADB6D14847" language="neutral" processorArchitecture="x86" />
       <hash>
         <dsig:Transforms>
           <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
         </dsig:Transforms>
         <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1" />
-        <dsig:DigestValue>wu5QQOKT9kPOO2PaA0vi48MEXcU=</dsig:DigestValue>
+        <dsig:DigestValue>wsQjrYQC8jC6X1djFMKhFhPvI4M=</dsig:DigestValue>
       </hash>
     </dependentAssembly>
   </dependency>
