@@ -1,21 +1,30 @@
 #!/bin/sh
 
-BUILD='MinimOsd_Extra/build-atmega328'
-SRC='MinimOsd_Extra'
-RELEASE='Released/FW_+_Char'
+
+NAME="OpenBeacon"
+
+BUILD="$NAME/build-atmega328"
+SRC=$NAME
+RELEASE='Released/FW'
+
 
 version(){
-    cat MinimOsd_Extra/version.h | grep 'RELEASE_NUM' | awk '{print $3}'
+    cat $NAME/version.h | grep 'RELEASE_NUM' | awk '{print $3}'
 }
 
 VERS=`version`
 
-make_one(){
+make_one() {
     PROTO=$1
 
     make -C $SRC PROTO="-DUSE_${PROTO}=1"
-    [ -f $BUILD/MinimOsd_Extra.hex ] && mv $BUILD/MinimOsd_Extra.hex $RELEASE/MinimOsd_Extra_Uni.${VERS}DV-${PROTO}-release.hex && rm -rf $BUILD
-
+    if [ -f $BUILD/$NAME.hex ] 
+    then
+         mv $BUILD/$NAME.hex $RELEASE/$NAME.${VERS}-${PROTO}.hex && rm -rf $BUILD
+         echo "$RELEASE/$NAME.${VERS}-${PROTO}.hex is ok"
+    else
+        echo "no boult target for ${PROTO} - $BUILD/$NAME.hex " 
+    fi
 }
 
 
