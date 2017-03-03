@@ -64,6 +64,8 @@ class GSM: public AltSoftSerial
     static byte lastError;
     static byte isTransparent;
     static byte isActive;
+private:
+    static bool module_ok;
 };
 
 #endif

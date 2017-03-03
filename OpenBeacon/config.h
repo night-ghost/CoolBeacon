@@ -65,18 +65,18 @@
 
 // эти ноги выведены на разъем приемника
 #define VBAT_PIN 18 // A4 (PC4) - Vext_bat (1К на землю, 20К на батарею)
-#define VCC_PIN 19  // A5 (PC5) - Vcc_bat  (10к на землю, 15К на батарею) или via magick mode
+#define VCC_PIN 19  // A5 (PC5) - Vcc_bat  (10к на землю, 15К на +5) или via magick mode
 
 
 
 // --------- GSM section
-
-#define GSM_DTR  6
-#define GSM_RING 7
-#define GSM_RX   8
-#define GSM_TX   9
-#define GSM_EN   10
-#define GSM_INT  PD3 // pin 1
+ 
+#define GSM_DTR  6  // PD6
+#define GSM_RING 7  // PD7
+#define GSM_RX   8  // PB0
+#define GSM_TX   9  // PB1
+#define GSM_EN   10 // PB2
+//#define GSM_INT  3  // PD3 - pin 1 
 
 #define GSM_SPEED 38400// 9600 // 19200 //
 

@@ -50,6 +50,8 @@ extern void delay_1();
 byte GSM::lastError=0;
 byte GSM::isTransparent=0;
 byte GSM::isActive=0;
+bool GSM::module_ok=false;
+
 
 static const char PROGMEM s_cpin_q[]="+CPIN?";
 static const char PROGMEM s_creg_q[]="+CREG?";
@@ -132,6 +134,9 @@ bool  GSM::begin(){
 }
 
 bool  GSM::begin(long speed){
+
+    if(!module_ok) return false;
+
     if(isActive) return true;
 
     power_timer1_enable();
@@ -186,6 +191,8 @@ bool  GSM::begin(long speed){
 }
 
 void GSM::turnOff(){
+    if(!module_ok) return;
+
     power_timer1_enable();
     AltSoftSerial::begin(GSM_SPEED);
     //digitalWrite(GSM_EN,LOW);
@@ -197,6 +204,8 @@ void GSM::turnOff(){
 
 // закончили работу с GSM - выключим
 void GSM::end() {
+    if(!module_ok) return;
+
     command(PSTR("+CNETLIGHT=0"),200); // LED off
     command(PSTR("+CPOWD=1"),PSTR("DOWN"),200); //power down
 
@@ -219,7 +228,13 @@ void GSM::initGSM(void){
     digitalWrite(GSM_DTR,HIGH);
     
     pinMode(GSM_RX, INPUT);
-    pinMode(GSM_INT, INPUT_PULLUP);
+    pinMode(GSM_RING, INPUT_PULLUP);
+
+    // проверим, а подключен ли вообще модуль?
+    // если да то на RX должен быть высокий уровень а на GSM_RING низкий
+    
+    if(digitalRead(GSM_RX)==HIGH && digitalRead(GSM_RING)==LOW) 
+        module_ok = true;
 }
 
 
@@ -302,6 +317,9 @@ serial.print(c);
 // отправка AT-команд
 // usage  command(PSTR("+SAPBR=3,1,\"CONTYPE\",\"GPRS\""), [PSTR("OK")], [10000]);
 uint8_t GSM::command(const char* cmd, const char* answer, const char* answer2, uint16_t time){
+    if(!module_ok) return false;
+
+
     readOut();
 
 #ifdef GSM_DEBUG
