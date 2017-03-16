@@ -5,10 +5,6 @@
     к тому же нога прерывания, нужная для работы SoftwareSerial, занята
 
 
-Отправка данных на сервер (GSM/GPRS shield)
-Подключаемся к Arduino к контактам 7 и 8. 
-
-
 http://cxem.net/arduino/arduino170.php
 http://arduino.ua/ru/guide/ArduinoGSMShield
 
@@ -233,7 +229,7 @@ void GSM::initGSM(void){
     // проверим, а подключен ли вообще модуль?
     // если да то на RX должен быть высокий уровень а на GSM_RING низкий
     
-    if(digitalRead(GSM_RX)==HIGH && digitalRead(GSM_RING)==LOW) 
+//    if(digitalRead(GSM_RX)==HIGH && digitalRead(GSM_RING)==LOW) 
         module_ok = true;
 }
 
@@ -386,6 +382,7 @@ serial.print_P(PSTR("#"));
 serial.print(c); if(c=='\n') serial.print('#'); 
 #endif
     	    } while(gsm.available_S()); // вычитать все что есть, а потом проверять будем
+
     	    Green_LED_OFF;
 
 	    // данные закончились, можно и проверить, если еще ответ не получен
