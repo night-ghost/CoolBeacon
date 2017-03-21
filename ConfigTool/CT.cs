@@ -1861,8 +1861,9 @@ namespace CT {
             frmTerm frm = new frmTerm(this);
             //frm.Show();
             frm.ShowInTaskbar = false;
-            frm.ShowDialog(); // modal
-            //comBusy = false; eats [config], let it be parsed
+          //  frm.ShowDialog(); // modal
+            frm.Show();
+            //comBusy =false; eats [config], let it be parsed
         }
 
         public void readOut(){

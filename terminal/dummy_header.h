@@ -1,0 +1,1 @@
+/mnt/disk_d/src/quad-copter/CoolBeacon/OpenBeacon/dummy_header.h

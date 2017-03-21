@@ -102,9 +102,22 @@ bool GSM::cregWait(){
 }
 
 
+const static PROGMEM uint32_t speeds[]= { 9600, 14400, 19200, 28800, 38400, 57600, 74880, 115200 };
+
+#define NUM_SPEEDS (sizeof(speeds)/sizeof(uint32_t))
+
 bool GSM::syncSpeed() {
-    for(byte i=25;i!=0; i--)			// speed negotiation
-        if(GSM::command(PSTR(""), 200) ) return true;
+    for(byte s=0; s<NUM_SPEEDS; s++){
+        for(byte i=15;i!=0; i--)			// speed negotiation
+            if(GSM::command(PSTR(""), 200) ) return true;
+
+        AltSoftSerial::end();
+        AltSoftSerial::begin(speeds[s]);
+    
+    }
+
+    AltSoftSerial::end();
+    AltSoftSerial::begin(GSM_SPEED);
 
     return false;
 }

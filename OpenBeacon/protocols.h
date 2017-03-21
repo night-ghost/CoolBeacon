@@ -1,23 +1,24 @@
 #pragma once
 
-#if defined(USE_MAVLINK)
-#include "../GCS_MAVLink/include/mavlink/v1.0/mavlink_types.h"
-#endif
-
-// see https://librepilot.atlassian.net/wiki/display/LPDOC/UavObjects
 
 #if defined(USE_UAVTALK)
+// see https://librepilot.atlassian.net/wiki/display/LPDOC/UavObjects
+
 #include "protocols/UAVTalk.h"
-#endif
 
-#if defined(USE_MWII)
+#elif defined(USE_MWII)
 #include "protocols/cleanflight.h"
-#endif
 
-#if defined(USE_LTM)
+#elif defined(USE_LTM)
 #include "protocols/LTM.h"
-#endif
 
+#elif defined(USE_MAVLINK)
+ #include "../GCS_MAVLink/include/mavlink/v1.0/mavlink_types.h"
+#else
+ #warn "no protocol defined!"
+ #define USE_MAVLINK
+ #include "../GCS_MAVLink/include/mavlink/v1.0/mavlink_types.h"
+#endif
 
 #include "gsm.h"
 

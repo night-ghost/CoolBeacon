@@ -27,27 +27,27 @@
 #include "config.h"
 #include "config-phones.h"
 
+#include "vars.h"
+
 #define voiceOnBuzzer false
 
-uint32_t watchdogTime_us = 16000;
+
 uint32_t millisCounter;
 byte ItStatus1;
 
-struct Params {
-    long FrequencyCorrection;
-    long CallToneFreq;
-    long Frequency;
-} p;
+byte powerByRSSI();
 
-#define SERIAL_BUFSIZE 80
-
-byte buf[SERIAL_BUFSIZE+1];
 
 #include "rfm22b.h"
+
+byte powerByRSSI() {
+    return RFM_MAX_POWER;
+}
 
 SingleSerialPort(serial);
 
 #include "gsm.h"
+#include "gsm_core.h"
 GSM gsm;
 
 // BuffStream
@@ -69,6 +69,8 @@ void setup(void) {
     pinMode(nSel_pin, OUTPUT);   //nSEL
 
     gsm.initGSM();
+    
+    watchdogTime_us = 16000;
 
   //LED and other interfaces
  #ifdef Red_LED
