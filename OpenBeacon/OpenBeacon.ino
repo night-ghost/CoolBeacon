@@ -1465,19 +1465,21 @@ void setup(void) {
 
     if(getExtVoltage() > 10) { // проверим наличие питания - GSM инициализируем только на внешнем
 	if(gsm.begin()){ // удалось инициализировать и зарегиться в сети - а вдруг СИМ-карта дохлая?
-
 DBG_PRINTLN("GSM init OK");
-	    int bal=gsm.balance();
 
-	    if( bal == 0 ) { // не удалось запросить
-		sts=2; 
-		lflags.gsm_ok=true; // но можно попытаться
+            if(BalanceRequest) { // задан код запроса
+                int bal=gsm.balance(BalanceRequest);
+
+                if( bal == 0 ) { // не удалось запросить
+    	            sts=2; 
+		    lflags.gsm_ok=true; // но можно попытаться
 DBG_PRINTLN("balance fail");
-	    } 
-	    else if( bal > 2) {
+	        } 
+	        else if( bal > 2) {
 DBG_PRINTLN("GSM OK");
-		lflags.gsm_ok=true; // денег хватит на СМС
-	    } else sts=3;		//баланс отрицательный
+	            lflags.gsm_ok=true; // денег хватит на СМС
+	        } else sts=3;		//баланс отрицательный
+	    }        
 	} else sts=1; // не удалось инициализировать GSM
 
 	if(lflags.gsm_ok) gsm.set_sleep(true); // sleep mode

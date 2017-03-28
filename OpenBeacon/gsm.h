@@ -47,7 +47,7 @@ class GSM: public AltSoftSerial
     static byte sendSMS(const char * phone, const char * text);
     static byte sendUSSD(uint16_t text);
     static char * getRSSI(void);
-    static int balance(void);
+    static int balance(uint8_t n);
     static bool initGPRS();
     static bool setAPN(char*);
     static bool initUDP(uint16_t);

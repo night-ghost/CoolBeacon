@@ -624,8 +624,8 @@ serial.printf_P(PSTR("# !!!=%s\n"),(char *)buf);
 }
 
 
-int GSM::balance(){
-    if(!GSM::sendUSSD(100)) {
+int GSM::balance(uint8_t n){
+    if(!GSM::sendUSSD(n)) {
 	return 0; //
     }
     
