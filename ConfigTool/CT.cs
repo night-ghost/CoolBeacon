@@ -35,7 +35,7 @@ namespace CT {
         
 
         //*****************************************/		
-        public const string VERSION = "r0.17";
+        public const string VERSION = "r0.20";
 
 
         
@@ -1962,7 +1962,7 @@ namespace CT {
             GSM_command("+CMGL=0,0");
 
             comPort.WriteLine(".");
-            MessageBox.Show(gsm_answer, "Balance", MessageBoxButtons.OK, MessageBoxIcon.Information); 
+            MessageBox.Show(gsm_answer, "SMS", MessageBoxButtons.OK, MessageBoxIcon.Information); 
             
         }
 
@@ -2276,8 +2276,11 @@ namespace CT {
                 return;
             
             }
-
-            val=int.Parse (tbx.Text);
+            try {
+                val=int.Parse (tbx.Text);
+            } catch{
+                val=0;
+            }
 as_number:
             readOut();
             comBusy=true ;
@@ -2372,6 +2375,9 @@ as_number:
             beaconCommand('s');
         }
 
+        private void txtParam21_Leave(object sender, EventArgs e) {
+            sendParam(21);
+        }
        
         private void Translate(Form f){
             bool found=false;
@@ -2467,6 +2473,8 @@ as_number:
             
 
         }
+
+        
 
        
 

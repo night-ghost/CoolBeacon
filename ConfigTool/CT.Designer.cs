@@ -53,11 +53,11 @@ namespace CT
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.PANEL_tabs = new System.Windows.Forms.TabControl();
             this.tabPageConfig = new System.Windows.Forms.TabPage();
+            this.btnBuzDTMF = new System.Windows.Forms.Button();
             this.btnMorze = new System.Windows.Forms.Button();
             this.btnDTMF = new System.Windows.Forms.Button();
             this.tnSayBuzzer = new System.Windows.Forms.Button();
             this.btnSave = new System.Windows.Forms.Button();
-            this.btnTrack = new System.Windows.Forms.Button();
             this.btnCalibrate = new System.Windows.Forms.Button();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.label36 = new System.Windows.Forms.Label();
@@ -160,7 +160,8 @@ namespace CT
             this.lblTLog = new System.Windows.Forms.Label();
             this.btnTLog = new System.Windows.Forms.Button();
             this.label14 = new System.Windows.Forms.Label();
-            this.btnBuzDTMF = new System.Windows.Forms.Button();
+            this.label37 = new System.Windows.Forms.Label();
+            this.txtParam21 = new System.Windows.Forms.TextBox();
             this.statusStrip1.SuspendLayout();
             this.menuStrip1.SuspendLayout();
             this.PANEL_tabs.SuspendLayout();
@@ -361,8 +362,8 @@ namespace CT
             this.tabPageConfig.Controls.Add(this.btnDTMF);
             this.tabPageConfig.Controls.Add(this.tnSayBuzzer);
             this.tabPageConfig.Controls.Add(this.btnSave);
-            this.tabPageConfig.Controls.Add(this.btnTrack);
             this.tabPageConfig.Controls.Add(this.btnCalibrate);
+            this.tabPageConfig.Controls.Add(this.btnConsole);
             this.tabPageConfig.Controls.Add(this.groupBox2);
             this.tabPageConfig.Controls.Add(this.groupBox1);
             this.tabPageConfig.Controls.Add(this.groupBox8);
@@ -377,9 +378,19 @@ namespace CT
             this.tabPageConfig.Text = "Config";
             this.tabPageConfig.UseVisualStyleBackColor = true;
             // 
+            // btnBuzDTMF
+            // 
+            this.btnBuzDTMF.Location = new System.Drawing.Point(295, 343);
+            this.btnBuzDTMF.Name = "btnBuzDTMF";
+            this.btnBuzDTMF.Size = new System.Drawing.Size(98, 24);
+            this.btnBuzDTMF.TabIndex = 32;
+            this.btnBuzDTMF.Text = "DTMF on buzzer";
+            this.btnBuzDTMF.UseVisualStyleBackColor = true;
+            this.btnBuzDTMF.Click += new System.EventHandler(this.btnBuzDTMF_Click);
+            // 
             // btnMorze
             // 
-            this.btnMorze.Location = new System.Drawing.Point(481, 343);
+            this.btnMorze.Location = new System.Drawing.Point(399, 343);
             this.btnMorze.Name = "btnMorze";
             this.btnMorze.Size = new System.Drawing.Size(84, 24);
             this.btnMorze.TabIndex = 31;
@@ -389,7 +400,7 @@ namespace CT
             // 
             // btnDTMF
             // 
-            this.btnDTMF.Location = new System.Drawing.Point(298, 343);
+            this.btnDTMF.Location = new System.Drawing.Point(216, 343);
             this.btnDTMF.Name = "btnDTMF";
             this.btnDTMF.Size = new System.Drawing.Size(74, 24);
             this.btnDTMF.TabIndex = 30;
@@ -399,7 +410,7 @@ namespace CT
             // 
             // tnSayBuzzer
             // 
-            this.tnSayBuzzer.Location = new System.Drawing.Point(205, 343);
+            this.tnSayBuzzer.Location = new System.Drawing.Point(123, 343);
             this.tnSayBuzzer.Name = "tnSayBuzzer";
             this.tnSayBuzzer.Size = new System.Drawing.Size(87, 24);
             this.tnSayBuzzer.TabIndex = 29;
@@ -418,17 +429,6 @@ namespace CT
             this.hint.SetToolTip(this.btnSave, "Read current settings form the beacon\'s memory");
             this.btnSave.UseVisualStyleBackColor = true;
             this.btnSave.Click += new System.EventHandler(this.btnSave_Click);
-            // 
-            // btnTrack
-            // 
-            this.btnTrack.Location = new System.Drawing.Point(97, 343);
-            this.btnTrack.Name = "btnTrack";
-            this.btnTrack.Size = new System.Drawing.Size(95, 25);
-            this.btnTrack.TabIndex = 14;
-            this.btnTrack.Text = "Download track";
-            this.hint.SetToolTip(this.btnTrack, "Downloa last points saved in beacon");
-            this.btnTrack.UseVisualStyleBackColor = true;
-            this.btnTrack.Click += new System.EventHandler(this.btnTrack_Click);
             // 
             // btnCalibrate
             // 
@@ -877,13 +877,14 @@ namespace CT
             // 
             // groupBox8
             // 
+            this.groupBox8.Controls.Add(this.txtParam21);
+            this.groupBox8.Controls.Add(this.label37);
             this.groupBox8.Controls.Add(this.btnClearSMS);
             this.groupBox8.Controls.Add(this.btnGetSms);
             this.groupBox8.Controls.Add(this.label32);
             this.groupBox8.Controls.Add(this.txtParam29a);
             this.groupBox8.Controls.Add(this.btnSMS);
             this.groupBox8.Controls.Add(this.btnBalance);
-            this.groupBox8.Controls.Add(this.btnConsole);
             this.groupBox8.Controls.Add(this.txtURL);
             this.groupBox8.Controls.Add(this.label20);
             this.groupBox8.Controls.Add(this.txtPhone4);
@@ -904,7 +905,7 @@ namespace CT
             // 
             // btnClearSMS
             // 
-            this.btnClearSMS.Location = new System.Drawing.Point(91, 266);
+            this.btnClearSMS.Location = new System.Drawing.Point(97, 293);
             this.btnClearSMS.Name = "btnClearSMS";
             this.btnClearSMS.Size = new System.Drawing.Size(79, 21);
             this.btnClearSMS.TabIndex = 26;
@@ -914,7 +915,7 @@ namespace CT
             // 
             // btnGetSms
             // 
-            this.btnGetSms.Location = new System.Drawing.Point(91, 240);
+            this.btnGetSms.Location = new System.Drawing.Point(97, 267);
             this.btnGetSms.Name = "btnGetSms";
             this.btnGetSms.Size = new System.Drawing.Size(79, 21);
             this.btnGetSms.TabIndex = 25;
@@ -935,7 +936,7 @@ namespace CT
             // 
             this.txtParam29a.Location = new System.Drawing.Point(119, 187);
             this.txtParam29a.Name = "txtParam29a";
-            this.txtParam29a.Size = new System.Drawing.Size(33, 20);
+            this.txtParam29a.Size = new System.Drawing.Size(47, 20);
             this.txtParam29a.TabIndex = 23;
             this.txtParam29a.Text = "15";
             this.txtParam29a.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
@@ -944,7 +945,7 @@ namespace CT
             // 
             // btnSMS
             // 
-            this.btnSMS.Location = new System.Drawing.Point(6, 266);
+            this.btnSMS.Location = new System.Drawing.Point(12, 293);
             this.btnSMS.Name = "btnSMS";
             this.btnSMS.Size = new System.Drawing.Size(79, 21);
             this.btnSMS.TabIndex = 17;
@@ -954,7 +955,7 @@ namespace CT
             // 
             // btnBalance
             // 
-            this.btnBalance.Location = new System.Drawing.Point(6, 240);
+            this.btnBalance.Location = new System.Drawing.Point(12, 267);
             this.btnBalance.Name = "btnBalance";
             this.btnBalance.Size = new System.Drawing.Size(79, 21);
             this.btnBalance.TabIndex = 16;
@@ -964,7 +965,7 @@ namespace CT
             // 
             // btnConsole
             // 
-            this.btnConsole.Location = new System.Drawing.Point(6, 293);
+            this.btnConsole.Location = new System.Drawing.Point(489, 345);
             this.btnConsole.Name = "btnConsole";
             this.btnConsole.Size = new System.Drawing.Size(79, 21);
             this.btnConsole.TabIndex = 15;
@@ -977,7 +978,7 @@ namespace CT
             // 
             this.txtURL.Location = new System.Drawing.Point(6, 158);
             this.txtURL.Name = "txtURL";
-            this.txtURL.Size = new System.Drawing.Size(146, 20);
+            this.txtURL.Size = new System.Drawing.Size(160, 20);
             this.txtURL.TabIndex = 14;
             this.txtURL.Text = "ykoctpa.ru/map?q=";
             this.hint.SetToolTip(this.txtURL, "URL of mapping service to send with coordinates");
@@ -1553,15 +1554,26 @@ namespace CT
             this.label14.Size = new System.Drawing.Size(0, 13);
             this.label14.TabIndex = 14;
             // 
-            // btnBuzDTMF
+            // label37
             // 
-            this.btnBuzDTMF.Location = new System.Drawing.Point(377, 343);
-            this.btnBuzDTMF.Name = "btnBuzDTMF";
-            this.btnBuzDTMF.Size = new System.Drawing.Size(98, 24);
-            this.btnBuzDTMF.TabIndex = 32;
-            this.btnBuzDTMF.Text = "DTMF on buzzer";
-            this.btnBuzDTMF.UseVisualStyleBackColor = true;
-            this.btnBuzDTMF.Click += new System.EventHandler(this.btnBuzDTMF_Click);
+            this.label37.AutoSize = true;
+            this.label37.Location = new System.Drawing.Point(6, 218);
+            this.label37.Name = "label37";
+            this.label37.Size = new System.Drawing.Size(111, 13);
+            this.label37.TabIndex = 27;
+            this.label37.Text = "Balance request code";
+            this.label37.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
+            // 
+            // txtParam21
+            // 
+            this.txtParam21.Location = new System.Drawing.Point(119, 213);
+            this.txtParam21.Name = "txtParam21";
+            this.txtParam21.Size = new System.Drawing.Size(47, 20);
+            this.txtParam21.TabIndex = 28;
+            this.txtParam21.Text = "100";
+            this.txtParam21.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+            this.hint.SetToolTip(this.txtParam21, "0 to turn off balance request");
+            this.txtParam21.Leave += new System.EventHandler(this.txtParam21_Leave);
             // 
             // CTool
             // 
@@ -1646,7 +1658,6 @@ namespace CT
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.CheckBox cbxAutoUpdate;
         private System.Windows.Forms.CheckBox cbxShowUpdateDialog;
-        private System.Windows.Forms.Button btnTrack;
         private System.Windows.Forms.Button btnCalibrate;
         private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.Label label26;
@@ -1747,6 +1758,8 @@ namespace CT
         private System.Windows.Forms.CheckBox chkParam18;
         private System.Windows.Forms.Button btnMorze;
         private System.Windows.Forms.Button btnBuzDTMF;
+        private System.Windows.Forms.TextBox txtParam21;
+        private System.Windows.Forms.Label label37;
     }
 	
 }

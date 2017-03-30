@@ -161,6 +161,9 @@
   <metadata name="hint.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
     <value>242, 17</value>
   </metadata>
+  <metadata name="hint.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>242, 17</value>
+  </metadata>
   <data name="txtParam7.ToolTip" xml:space="preserve">
     <value>Number of errors permitted in GPS coordinates reading. In case of exceeding the threshold, GPS interaction ceased in odere to save battery power. Further reading of coordinates is performed 100 times more rarely.</value>
   </data>
