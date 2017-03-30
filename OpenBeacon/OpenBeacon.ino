@@ -52,14 +52,16 @@ GNU GPLv3 LICENSE
 #include "config.h"
 
 #include <AltSoftSerial.h>
+#include "vars.h"
 
+// Arduino inserts all declarations before first non-preproc line - HERE
 SingleSerialPort(serial);
 
 // own includes
 #include "version.h"
 #include "bufstream.h"
 #include "config-phones.h"
-#include "vars.h"
+
 #include "eeprom.h"
 
 
@@ -1254,15 +1256,20 @@ void consoleCommands(){
 //DBG_PRINTLN("balance ");
 			    byte n;
 			    *buf=0;
-			    if(gsm.begin()) {
-	   			gsm.sendUSSD(100);
+			    if(p.BalanceRequest) {
+			        if(gsm.begin()) {
+	   			    gsm.sendUSSD(p.BalanceRequest);
 DBG_PRINTLN("result = ");
 DBG_PRINTVARLN((char *)buf);
 			
-    			        // in buffer
-    			        serial.print((char *)buf);
-    			    } else 
-    				print_SNS(PSTR("ERROR="),gsm.lastError,PSTR("\n"));
+    			            // in buffer
+    			            serial.print((char *)buf);
+    			        } else {
+    				    print_SNS(PSTR("ERROR="),gsm.lastError,PSTR("\n"));
+    				}
+    			    } else {
+    			        serial.println_P(PSTR("Disabled"));
+    			    }
 			    break;
 			    
 			case 'g': // прямая связь с модемом
@@ -1467,8 +1474,8 @@ void setup(void) {
 	if(gsm.begin()){ // удалось инициализировать и зарегиться в сети - а вдруг СИМ-карта дохлая?
 DBG_PRINTLN("GSM init OK");
 
-            if(BalanceRequest) { // задан код запроса
-                int bal=gsm.balance(BalanceRequest);
+            if(p.BalanceRequest) { // задан код запроса
+                int bal=gsm.balance(p.BalanceRequest);
 
                 if( bal == 0 ) { // не удалось запросить
     	            sts=2; 

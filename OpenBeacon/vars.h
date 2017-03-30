@@ -399,10 +399,13 @@ struct loc_flags lflags = {0,0,0,0,0,0,0}; // все булевые флаги �
 // из mavlink координаты идут в LONG,  домноженные на 10000000
 //                      максимальное беззнаковое  - 4294967296
 // и  нет никакого смысла связываться с float!
-struct Coord {
+typedef struct COORD {
     long lat;
     long lon;
-} coord, home_coord={(long)BAD_COORD,(long)BAD_COORD}; // домашних координат нет
+} Coord;
+
+
+Coord coord, home_coord={(long)BAD_COORD,(long)BAD_COORD}; // домашних координат нет
 
 
 Coord bad_coord ={(long)BAD_COORD,(long)BAD_COORD};
