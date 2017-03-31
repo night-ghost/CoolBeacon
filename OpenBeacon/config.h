@@ -78,8 +78,8 @@
 #define GSM_EN   10 // PB2
 //#define GSM_INT  3  // PD3 - pin 1 
 
-//#define GSM_SPEED 38400// 9600 // 19200 //
-#define GSM_SPEED 115200// 9600 // 19200 //
+#define GSM_SPEED 38400// 9600 // 19200 //
+//#define GSM_SPEED 115200// 9600 // 19200 //
 
 //#define GSM_SMS_URL "maps.google.ru/maps?q="     // форматировать координвты под ссылку на карты гугля
 #define GSM_SMS_URL "ykoctpa.ru/map?q="          // а тут короче и есть Яндекс
