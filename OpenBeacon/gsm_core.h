@@ -74,7 +74,7 @@ bool GSM::cregWait(){
     byte nTry=60; // seconds
 
     while(nTry-- >0){
-         byte f= GSM::command(s_creg_q, s_ok, patt_creg);   // NET registered?
+         byte f= GSM::command(s_creg_q, s_ok, patt_creg,6000);   // NET registered?
 	// handle CREG: 0,2
 
 #ifdef GSM_DEBUG
@@ -167,7 +167,7 @@ bool  GSM::begin(long speed){
     
             command(PSTR("+CSCB=1")); // запрет широковещательных уведомлений
                 
-            f=      command(s_cpin_q,s_cpin_a); // SIM ok?
+            f=      command(s_cpin_q,s_cpin_a,5000); // SIM ok?
 
     	// http://we.easyelectronics.ru/blog/part/369.html
 	// AT+CMGF
