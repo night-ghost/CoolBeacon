@@ -113,7 +113,7 @@ uint8_t spiReadData(void)
     SCK_on;
     NOP();
 
-    Result = (Result << 1) | SDO_1;
+    Result = (Result << 1) | SDO_read;
 
     SCK_off;
     NOP();
