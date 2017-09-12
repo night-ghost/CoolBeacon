@@ -257,10 +257,10 @@ TCCR1A = (1<<WGM10);
   #define HARD_VOICE 2 // oc2b
 
   #define SDO_pin A0  // PC0  23
-  #define SDI_pin A3  // PC3
+  #define SDI_pin A3  // PC3 
   #define SCLK_pin 13 // PB5
   
-  #define IRQ_pin 2   // INT0
+  #define IRQ_pin 2   // INT0 - RFm22 GPIO2
   #define nSel_pin A1 // PC1
   
   #define IRQ_interrupt 0 // Int0

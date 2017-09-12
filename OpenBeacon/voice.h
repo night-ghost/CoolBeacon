@@ -75,7 +75,7 @@ ISR(TIMER0_COMPA_vect) {
     OCR0A = TCNT0 + inc; // отложим следующее прерывание на величину задержки
 
     if(fTone) {	//		если генерируем тон
-	OCR2A = (++fHalf & 1)?0x30:0xd0; // то новое значение задаем самостоятельно
+	OCR2B = (++fHalf & 1)?0x30:0xd0; // то новое значение задаем самостоятельно
 //	fHalf=!fHalf; 		// другой полупериод
 /* там и так это значение, ничего страшного
 #ifdef DO_DTMF
@@ -84,7 +84,7 @@ ISR(TIMER0_COMPA_vect) {
 #endif
 */
     } else {
-	OCR2A = voicePWM;        // записать новое значение ШИМ
+	OCR2B = voicePWM;        // записать новое значение ШИМ
     }
     fInt = 1; 		// было прерывание
 
@@ -108,9 +108,9 @@ void beep(unsigned int t){ // used also in DTMF
 
     while(dt>millis()){
     //for(byte i=255; i!=0; i--){
-        OCR2A=a;
+        OCR2B=a;
         delayMicroseconds(180);
-        OCR2A=c;
+        OCR2B=c;
         delayMicroseconds(180);
     }
 #else
@@ -145,10 +145,14 @@ void _sendVOICE(char *s, byte beeps){
     power_timer2_enable();
 
 // ШИМ частотой 16MHz / 256 = 62.5KHz (период 16мкс), значит одно значение ШИМ звучит 155/16 ~= 10 периодов
-    TIMSK2 = (1<<OCIE2A) | (1<<TOIE2);  // Int T2 Overflow + Compare enabled
-    TCCR2A = (1<<WGM21) | (1<<WGM20);   // Fast PWM 
+    TIMSK2 = (1<<OCIE2B) | (1<<TOIE2);  // Int T2 Overflow + Compare enabled
+#ifdef HARD_VOICE
+    TCCR2A = (1<<WGM21) | (1<<WGM20) | (1<<COM2B1);   // Fast PWM non-inverted output
+#else
+    TCCR2A = (1<<WGM21) | (1<<WGM20);   // Fast PWM
+#endif
     TCCR2B = (1<<CS20);                 // CLK/1 и режим Fast PWM
-    OCR2A=0x0; // начальное значение компаратора
+    OCR2B=0x0; // начальное значение компаратора
 
     
     
@@ -219,7 +223,7 @@ void _sendVOICE(char *s, byte beeps){
     TIMSK0 &= ~(1 << OCIE0A); // запретим compare interrupt
 
     TIMSK2 = 0; // выключить таймер
-//  TCCR2A = 0; его можно не сбрасывать, таймер все равно остановлен
+    TCCR2A = 0; // его можно не сбрасывать, таймер все равно остановлен - но надо отключить ногу в режиме HardVoice
     TCCR2B = 0;
  
     BUZZER_LOW; // могли говорить в пищальник и забыть

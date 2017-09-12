@@ -10,6 +10,40 @@
 #define RF22B_PWRSTATE_RX           0x05
 #define RF22B_PWRSTATE_TX           0x09
 
+enum RFM22B_GPIO_Function {
+    POWER_ON_RESET                              = 0x00,         // This depends on the GPIO!
+    WAKE_UP_TIMER_1                             = 0x01,
+    LOW_BATTERY_DETECT_1                        = 0x02,
+    DIRECT_DIGITAL_INPUT                        = 0x03,
+    EXTERNAL_INTERRUPT_FALLING                  = 0x04,
+    EXTERNAL_INTERRUPT_RISING                   = 0x05,
+    EXTERNAL_INTERRUPT_CHANGE                   = 0x06,
+    ADC_ANALOGUE_INPUT                          = 0x07,
+//      RESERVED                                = 0x08, 
+//      RESERVED                                = 0x09,
+    DIRECT_DIGITAL_OUTPUT                       = 0x0A,
+//      RESERVED                                = 0x0B, 
+//      RESERVED                                = 0x0C,
+//      RESERVED                                = 0x0D,
+    REFERENCE_VOLTAGE                           = 0x0E,
+    DATA_CLOCK_OUTPUT                           = 0x0F,
+    DATA_INPUT                                  = 0x10,
+    EXTERNAL_RETRANSMISSION_REQUEST             = 0x11,
+    TX_STATE                                    = 0x12,
+    TX_FIFO_ALMOST_FULL                         = 0x13,
+    RX_DATA                                     = 0x14,
+    RX_STATE                                    = 0x15,
+    RX_FIFO_ALMOST_FULL                         = 0x16,
+    ANTENNA_1_SWITCH                            = 0x17,
+    ANTENNA_2_SWITCH                            = 0x18,
+    VALID_PREAMBLE_DETECTED                     = 0x19,
+    INVALID_PREAMBLE_DETECTED                   = 0x1A,
+    SYNC_WORD_DETECTED                          = 0x1B,
+    CLEAR_CHANNEL_ASSESSMENT                    = 0x1C,
+    VDD                                         = 0x1D,
+    GND                                         = 0x1E
+};
+
 void spiSendCommand(uint8_t command);
 uint8_t spiReadData(void);
 void spiWriteData(uint8_t i);
@@ -26,16 +60,18 @@ static inline boolean getBit(byte Reg, byte whichBit) {
 
 
 // если RFMка выключена то дерготня SDI ей не мешает, так что не тратим время на проверку
-ISR(TIMER2_COMPA_vect) {
+ISR(TIMER2_COMPB_vect) {
 
+#ifndef HARD_VOICE
     SDI_off;
-
+#endif
     if(voiceOnBuzzer) BUZZER_HIGH;
 }
 
 ISR(TIMER2_OVF_vect)  {
-    
+#ifndef HARD_VOICE
     SDI_on;
+#endif
     if(voiceOnBuzzer) BUZZER_LOW;
 
 #if defined(USE_DTMF) && !defined(DTMF_TIM0)
@@ -221,8 +257,17 @@ void initRFM(void)
 	 0x79, 0 ,	// start channel
 	 0x7a, 0x05 ,   // 50khz step size (10khz x value) // no hopping
 	 0x70, 0x24 ,	// disable manchester
-	 0x71, 0x12 ,	// trclk=[00] no clock, dtmod=[01] direct using SPI SDI, fd8=0 eninv=0 modtyp=[10] FSK  - 
-
+#ifdef HARD_VOICE
+	 0x0b, 0x12 ,	// gpio0 TX State
+	 0x0c, 0x15 ,	// gpio1 RX State
+	 0x0d, 0x10 ,	// gpio 2 data input
+         0x71, 0b00000010, // trclk=[00] no clock, dtmod=[00] direct using GPIO pin, fd8=0 eninv=0 modtyp=[10] FSK  - 
+#else
+	 0x0b, 0x12 ,	// gpio0 TX State
+	 0x0c, 0x15 ,	// gpio1 RX State
+	 0x0d, 0xfd ,	// gpio 2 micro-controller clk output
+	 0x71, 0x12 ,	   // trclk=[00] no clock, dtmod=[01] direct using SPI SDI, fd8=0 eninv=0 modtyp=[10] FSK  - 
+#endif
 // fd[7] fd[6] fd[5] fd[4] fd[3] fd[2] fd[1] fd[0] 
 	 0x72, 0x08 ,	// fd (frequency deviation) 8*625Hz == 5.0kHz
 
