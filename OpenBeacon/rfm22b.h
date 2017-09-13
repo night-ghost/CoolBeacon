@@ -44,6 +44,26 @@ enum RFM22B_GPIO_Function {
     GND                                         = 0x1E
 };
 
+// Interrupt Enable spans 2 registers, but for the purpose of this enum they are treated as one (16 bit) register
+enum RFM22B_Interrupt {
+    POWER_ON_RESET_INT                          = (1 << 0),
+    CHIP_READY                                  = (1 << 1),
+    LOW_BATTERY_DETECT                          = (1 << 2),
+    WAKE_UP_TIMER                               = (1 << 3),
+    RSSI                                        = (1 << 4),
+    INVALID_PREAMBLE                            = (1 << 5),
+    VALID_PREAMBLE                              = (1 << 6),
+    SYNC_WORD                                   = (1 << 7),
+    CRC_ERROR                                   = (1 << 8),
+    VALID_PACKET_RECEIVED                       = (1 << 9),
+    PACKET_SENT                                 = (1 << 10),
+    EXTERNAL_INT                                = (1 << 11),
+    RX_FIFO_ALMOST_FULL_INT                     = (1 << 12),
+    TX_FIFO_ALMOST_EMPTY_INT                    = (1 << 13),
+    TX_FIFO_ALMOST_FULL_INT                     = (1 << 14),
+    FIFO_UNDERFLOW_OVERFLOW                     = (1 << 15)
+};
+
 void spiSendCommand(uint8_t command);
 uint8_t spiReadData(void);
 void spiWriteData(uint8_t i);

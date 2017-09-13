@@ -297,7 +297,10 @@ void GSM::doOnDisconnect(){
 
 void GSM::readOut() { // Clean the input buffer from last answer and unsolicit answers
     char c;
+
+#if defined(USE_GPRS)
     char * cp = GSM_response;
+#endif
 
     while( gsm.available_S()) {
 #ifdef GSM_DEBUG

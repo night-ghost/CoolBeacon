@@ -20,7 +20,7 @@ static const uint16_t PROGMEM adpcm_stepsize_tab[89] = {
   15289, 16818, 18500, 20350, 22385, 24623, 27086, 29794, 32767
 };
 
-#define MAX_ADPCM_INDEX (sizeof(adpcm_stepsize_tab)/sizeof(uint16_t) - 1)
+#define MAX_ADPCM_INDEX ((uint8_t)(sizeof(adpcm_stepsize_tab)/sizeof(uint16_t) - 1))
 
 uint16_t adpcmDec(uint8_t sample_in, uint16_t sample_prev) {
     uint16_t diffq, step;

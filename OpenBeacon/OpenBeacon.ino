@@ -38,6 +38,8 @@ GNU GPLv3 LICENSE
 
 #include <SingleSerial.h>
 
+#include "Arduino.h"
+
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/common.h>
@@ -47,7 +49,6 @@ GNU GPLv3 LICENSE
 #include <avr/wdt.h>
 #include <avr/sleep.h>
 #include <avr/power.h>
-#include <Arduino.h>
 
 #include "config.h"
 
@@ -482,7 +483,7 @@ void inline printCoord(long& l){ // signed long!
 }
 
 bool badCoord(Coord  *p){
-    return p->lat==BAD_COORD || p->lon == BAD_COORD;
+    return (uint32_t)p->lat==BAD_COORD || (uint32_t)p->lon == BAD_COORD;
 }
 
 
@@ -551,8 +552,6 @@ void redBlink(){
     Red_LED_OFF;
 }
 
-
-static void inline sendMorzeSign(); //not used
 
 void Delay_listen(){
     delay( p.ListenDuration);
@@ -673,7 +672,7 @@ inline void Beacon_and_Voice() {
     sendBeacon();
  
     if( cycles_count % (byte)p.SearchGPS_time) {
-//	SendMorzeSign();
+
 	if(lflags.hasGPSdata){ // есть данные той или иной свежести
 	    deepSleep_450();
 	    sendVOICE(messageBuff,0);
@@ -1254,7 +1253,6 @@ void consoleCommands(){
 #if defined(USE_GSM)
 			case 'm': // get balance
 //DBG_PRINTLN("balance ");
-			    byte n;
 			    *buf=0;
 			    if(p.BalanceRequest) {
 			        if(gsm.begin()) {
@@ -2031,11 +2029,11 @@ DBG_PRINTLN("MAVLINK coords");
 
 #if USE_MORZE
 	if( morze.available() && one_listen() ) {   // не передаем и есть вызов
+morzeGotCall:
 #else
 //	if(one_listen() > 5) {
 	if(one_listen()) { // приняли ЛЮБОЙ вызов
 #endif
-morzeGotCall:
 	    for(byte i=5; i>0; i--) {
 		Green_LED_ON;
 	        redBlink(); 

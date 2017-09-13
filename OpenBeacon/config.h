@@ -276,7 +276,7 @@ TCCR1A = (1<<WGM10);
   #define  SCK_off  PORTB &= ~_BV(5)    //B5
   #define  SDI_on   PORTC |=  _BV(3)    //C3
   #define  SDI_off  PORTC &= ~_BV(3)    //C3
-  #define  SDO_read ((PINA & _BV(0)) != 0) //A0
+  #define  SDO_read ((PINC & _BV(0)) != 0) //C0
   
 #elif HARDWARE_TYPE == 3 // 644 board
 
