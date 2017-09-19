@@ -4,7 +4,7 @@ All-in-One beacon and tracker: GSM, Radio, voice, flashlamp
 
 Based on:
    
-   OpenLRS Beacon Project (tBeacon late)  by Konstantin Sbitnev Version 0.1,
+   OpenLRS Beacon Project (tBeacon late)  by Konstantin Sbitnev Version 0.3,
        wihch based on
        
    openLRSngBeacon by Kari Hautio - kha @ AeroQuad/RCGroups/IRC(Freenode)/FPVLAB etc.
@@ -13,7 +13,7 @@ Based on:
    
    OpenTinyRX by Baychi soft 2013 
 
-   binary code analysys of tBeacon 0.54 (voice samples)
+   binary code analysys of tBeacon 0.54 (voice samples), disgrace to GPL violators!
 
   ************************************
   
@@ -115,9 +115,12 @@ Config Tool is working!
 to compile:
 
 download SingleSerial library from Github
+download GCS_MAVLink library from OSD project
 
 then add 
 
  ##define SKIP_FLOAT
 
 to SingleSerial/BetterSteam.h
+
+then use build script build.sh 
