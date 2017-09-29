@@ -1002,7 +1002,9 @@ unsigned int sqrt32(unsigned long n)
     }
 }
 
-
+void delay_1000(){
+    delay(1000);
+}
 
 // see https://github.com/Traumflug/Teacup_Firmware/blob/master/dda_maths.c#L74
 uint32_t approx_distance(uint32_t dx, uint32_t dy) {
@@ -1452,7 +1454,7 @@ void setup(void) {
 
     if(vcc < VCC_LOW_THRESHOLD) {
 
-//DBG_PRINTLN("low VCC");
+DBG_PRINTLN("low VCC");
 
 	while((vcc=readVCC())<3300){
 //	      DBG_PRINTLN("low VCC");
@@ -1546,6 +1548,8 @@ DBG_PRINTLN("GSM OK");
     if(vcc){
 //	if(vcc>4200) vcc=4200; будем честными, можно и не от батареи работать
 
+DBG_PRINTLN("say VCC");
+
 //	voiceOnBuzzer = true; // зачем при включении говорить по радио? - для проверки!
 	sayVoltage(vcc/100,0);
 //	voiceOnBuzzer = false;
@@ -1623,14 +1627,14 @@ void loop(void) {
 
     vExt = getExtVoltage(); // читаем всегда дабы знать о наличии питания
 
-//    DBG_PRINTVARLN(vExt);
+DBG_PRINTVARLN(vExt);
     
     // TODO - через MAVlink идет напряжение замеренное контроллером, использовать для (само)проверки?
     if(vExt<=10) { // <1v питания нет
 	lflags.hasPower = false;
 
 	if(lflags.lastPowerState) { // только что было
-//   DBG_PRINTLN("no vExt");
+   DBG_PRINTLN("no vExt");
 	    if( lflags.wasPower 		// маяк могут включить раньше коптера - не паникуем раньше времени
 	     && diff_more( powerTime, 60)   // питание было подано больше минуты
 	     && lflags.motor_armed		// и были заармлены моторы
@@ -1638,7 +1642,7 @@ void loop(void) {
 	 
 				     // случилось страшное
 	        lflags.connected = false;     // соединения нет
-//     DBG_PRINTLN("VCC gone");
+     DBG_PRINTLN("VCC gone");
 	        
 	        if(lflags.pointDirty){
 	            SaveGPSPoint(); // сохранять последнюю найденную точку по обрыву питания
@@ -1647,7 +1651,7 @@ void loop(void) {
 	        disconnectTime = uptime; // пошло время от отсоединения
 	    } else { // нестрашное пропадание питания - сбросим флаг
 	        lflags.wasPower = false;
-//     DBG_PRINTLN("VCC ignored lost");
+     DBG_PRINTLN("VCC ignored lost");
 	    }
 	}
 
@@ -1667,8 +1671,8 @@ void loop(void) {
 	}
 	if(!lflags.lastPowerState) { // включение
 	    disconnectTime=0;  // если выключили и включили питание - дисконнекта нет
-// DBG_PRINTLN("VCC up");
-//DBG_PRINTVARLN(vExt);
+ DBG_PRINTLN("VCC up");
+DBG_PRINTVARLN(vExt);
 	}
     }
 

@@ -63,9 +63,6 @@ GSM::GSM(){
 }
 
 
-void delay_1000(){
-    delay(1000);
-}
 
 
 bool GSM::cregWait(){
