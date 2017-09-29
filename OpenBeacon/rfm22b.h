@@ -255,9 +255,19 @@ static inline void rfmSetCarrierFrequency(uint32_t f)
 void initRFM(void)
 {
     byte ItStatus1;
-    
+
+    ItStatus1 = spiReadRegister(0x00);   // device type
+DBG_PRINTVARLN(ItStatus1);
+    ItStatus1 = spiReadRegister(0x01);   // device version
+DBG_PRINTVARLN(ItStatus1);
+    ItStatus1 = spiReadRegister(0x02);   // device state
+DBG_PRINTVARLN(ItStatus1);
+
+
     ItStatus1 = spiReadRegister(0x03);   // read status, clear interrupt
+DBG_PRINTVARLN(ItStatus1);
     ItStatus1 = spiReadRegister(0x04);
+DBG_PRINTVARLN(ItStatus1);
 
 
 #if 1  // 114 bytes of flash
@@ -317,7 +327,7 @@ void initRFM(void)
     spiWriteRegister(0x09, (byte)p.FrequencyCorrection);  // (default) c = 12.5p
 
 #else
-   spiWriteRegister(0x05, 0x00);
+  spiWriteRegister(0x05, 0x00);
   spiWriteRegister(0x06, 0x40);    
 
   spiWriteRegister(0x07, RF22B_PWRSTATE_READY); 
