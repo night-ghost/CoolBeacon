@@ -6,6 +6,8 @@ bool getData(){
 //LED_BLINK;
     byte sts;
 
+    static uint8_t cnt;
+
     if(lflags.data_link_active || lflags.data_mode){
 again:
 #if defined(USE_MAVLINK)
@@ -25,8 +27,11 @@ again:
 
 #if defined(AUTOBAUD)
 	    serial.end();
-	    Red_LED_ON;
-	    Green_LED_ON; // two leds together = no valid data
+	    if(cnt==0){
+    	        Red_LED_ON;
+	        Green_LED_ON; // two leds together = no valid data
+	    }
+	    
 	    static uint8_t last_pulse = 15;
 	    uint32_t pt = millis() + 100; // не более 0.1 секунды
 	
@@ -59,9 +64,13 @@ again:
 	    else if(pulse < 150)	speed =   9600;
 	    else                        speed =   4800;
 
+	    if(cnt==0){
+    	        Green_LED_OFF;
+	        Red_LED_OFF;
+	    }
+	    cnt = (cnt+1)%4;
+
 	    serial.begin(speed);
-	    Green_LED_OFF;
-	    Red_LED_OFF;
 #endif    
 	
 	    lflags.data_mode=true; // пробуем почитать данные

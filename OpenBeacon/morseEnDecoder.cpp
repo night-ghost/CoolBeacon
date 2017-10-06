@@ -220,7 +220,7 @@ stop:
                 //HW deinit
                 TIMSK0 &= ~( (1 << OCIE0B) | (1 << OCIE0A) ); // запретим compare interrupt
 	        TIMSK2 = 0;
-	        //TCCR2A = 0; его можно не сбрасывать, таймер остановлен
+	        TCCR2A = 0; // его можно не сбрасывать, таймер остановлен - но ногу надо от таймера отвязать
 	        TCCR2B = 0;
 	        power_timer2_disable();
 	    }
@@ -303,18 +303,23 @@ prepare:
 		RFM_set_TX();
 //		RFM_tx_min();
 
-	        //inc = 250/4; // 2000 Hz
 	        inc = BEEP_TONE(2500); // 2500Hz
 	        power_timer2_enable();
 
 // ШИМ частотой 16MHz / 256 = 62.5KHz (период 16мкс)
 	        TIMSK2 = (1 << OCIE2A) | (1 << TOIE2);  // Int T2 Overflow + Compare enabled
-	        TCCR2A = (1<<WGM21) | (1<<WGM20);       // Fast PWM.
+#if defined(HARD_VOICE) && HARD_VOICE==2
+                TCCR2A = (1<<WGM21) | (1<<WGM20) | (1<<COM2B1);   // Fast PWM non-inverted output
+#elif defined(HARD_VOICE) && HARD_VOICE==1
+                TCCR2A = (1<<WGM21) | (1<<WGM20) | (1<<COM2A1);   // Fast PWM non-inverted output
+#else
+                TCCR2A = (1<<WGM21) | (1<<WGM20);   // Fast PWM
+#endif	        
 	        TCCR2B = (1<<CS20);                     // CLK/1 и режим Fast PWM
 // зачем мешать естественному ходу вещей?    OCR0B = TCNT0;   // отложим прерывание на нужное время
 	        TIFR0   = (1<<OCF0B)  | (1<<OCF0A);     // clear flags
 	        TIMSK0 |= (1<<OCIE0B) | (1<<OCIE0A);    // разрешим compare  interrupt
-	        OCR2A=0x0; // начальное значение компаратора
+	        OCR2B=0x0; // начальное значение компаратора
 
 	    }
 	} // new char

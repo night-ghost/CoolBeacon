@@ -263,6 +263,8 @@ DBG_PRINTVARLN(ItStatus1);
     ItStatus1 = spiReadRegister(0x02);   // device state
 DBG_PRINTVARLN(ItStatus1);
 
+    ItStatus1 = spiReadRegister(0x1b); //batt voltage
+DBG_PRINTVARLN(ItStatus1);
 
     ItStatus1 = spiReadRegister(0x03);   // read status, clear interrupt
 DBG_PRINTVARLN(ItStatus1);
