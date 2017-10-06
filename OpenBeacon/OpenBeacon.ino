@@ -693,20 +693,41 @@ void  beepOnBuzzer(unsigned int length){
 
 
 // затем попищать
-#if BUZZER_PIN
+#ifdef ACTIVE_BUZZER
+ #if BUZZER_PIN
+  #if defined(BUZZER_PIN_PORT) && defined(BUZZER_PIN_BIT)
+	    BUZZER_HIGH;
+	    delay_100();
+	    BUZZER_LOW;
+  #else
+	    digitalWrite(BUZZER_PIN, 1);
+	    delay_100();
+	    digitalWrite(BUZZER_PIN, 0);
+  #endif
+	}
+ #else
+    if(BuzzerPin){
+	    digitalWrite(BuzzerPin, 1);
+	    delay_100();
+	    digitalWrite(BuzzerPin, 0);
+	}    
+    } else delay_50();
+ #endif
+#else
+ #if BUZZER_PIN
 	for(;length>0;length--){
-#if defined(BUZZER_PIN_PORT) && defined(BUZZER_PIN_BIT)
+  #if defined(BUZZER_PIN_PORT) && defined(BUZZER_PIN_BIT)
 	    BUZZER_HIGH;
 	    delayMicroseconds(BuzzerToneDly);
 	    BUZZER_LOW;
-#else
+  #else
 	    digitalWrite(BUZZER_PIN, 1);
 	    delayMicroseconds(BuzzerToneDly);
 	    digitalWrite(BUZZER_PIN, 0);
-#endif
+  #endif
 	    delayMicroseconds(BuzzerToneDly);
 	}
-#else
+ #else
     if(BuzzerPin){
 	for(;length>0;length--){
 	    digitalWrite(BuzzerPin, 1);
@@ -715,6 +736,7 @@ void  beepOnBuzzer(unsigned int length){
 	    delayMicroseconds(BuzzerToneDly);
 	}    
     } else delay_50();
+ #endif
 #endif
 
 // и не забыть выклюючить вспышку

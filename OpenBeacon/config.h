@@ -9,7 +9,7 @@
 //#define USE_GSM 1// используем или нет
 //#define USE_GPRS 1 not used!
 
-
+//#define ACTIVE_BUZZER
 
 
 #define DTMF_TIM0
