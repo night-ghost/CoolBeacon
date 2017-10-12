@@ -15,6 +15,9 @@ Based on:
 
    binary code analysys of tBeacon 0.54 (voice samples), disgrace to GPL violators!
 
+
+  board - https://oshpark.com/shared_projects/phT3aYnI
+
   ************************************
   
    "Все-в одном" Поисковый маяк на базе приемника HawkEye / OrangeRx Open LRS 433MHz 9Ch Receiver
