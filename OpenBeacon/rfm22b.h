@@ -85,6 +85,8 @@ ISR(TIMER2_COMPB_vect) {
 #ifndef HARD_VOICE
     SDI_off;
 #endif
+//    PD3_off;
+
     if(voiceOnBuzzer) BUZZER_HIGH;
 }
 
@@ -92,6 +94,8 @@ ISR(TIMER2_OVF_vect)  {
 #ifndef HARD_VOICE
     SDI_on;
 #endif
+//    PD3_on;
+
     if(voiceOnBuzzer) BUZZER_LOW;
 
 #if defined(USE_DTMF) && !defined(DTMF_TIM0)
@@ -256,6 +260,7 @@ void initRFM(void)
 {
     byte ItStatus1;
 
+/* un-comment in case of RFM problems
     ItStatus1 = spiReadRegister(0x00);   // device type
 DBG_PRINTVARLN(ItStatus1);
     ItStatus1 = spiReadRegister(0x01);   // device version
@@ -265,11 +270,11 @@ DBG_PRINTVARLN(ItStatus1);
 
     ItStatus1 = spiReadRegister(0x1b); //batt voltage
 DBG_PRINTVARLN(ItStatus1);
-
+*/
     ItStatus1 = spiReadRegister(0x03);   // read status, clear interrupt
-DBG_PRINTVARLN(ItStatus1);
+//DBG_PRINTVARLN(ItStatus1);
     ItStatus1 = spiReadRegister(0x04);
-DBG_PRINTVARLN(ItStatus1);
+//DBG_PRINTVARLN(ItStatus1);
 
 
 #if 1  // 114 bytes of flash
@@ -415,7 +420,7 @@ void delay_10(){
 }
 
 void delay_50(){
-    delay(50);
+    delay(50);    
     // delay_10(); delay_10(); delay_10(); delay_10(); delay_10(); better on 2 bytes only
 }
 
@@ -457,11 +462,10 @@ void RFM_tx_min(){
 }
 
 void RFM_off(byte force)
-{  // TODO: SDN mangling in the future
+{ 
   if(lflags.rfm_on || force)
     spiWriteRegister(0x07, RF22B_PWRSTATE_POWERDOWN);
   lflags.rfm_on=false;
-//DBG_PRINTLN("RFM off");
 }
 
 void RFM_off(){

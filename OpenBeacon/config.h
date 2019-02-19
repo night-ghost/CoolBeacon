@@ -224,10 +224,12 @@ TCCR1A = (1<<WGM10);
 #elif HARDWARE_TYPE == 2 // special board for CoolBeacon
 
  // номера ног вспышки и пищалки. Можно и без них (через конфигуратор), но при прямом указании лучше :)
- #define FLASH_PIN 12 // PB3, MEGA's pin 15
+// #define FLASH_PIN 12 // PB3, MEGA's pin 15 --correct one
+ #define FLASH_PIN A4 // PC4 - temporary
 
  // нога фотовспышки. в отличие от FLASH_PIN вспыхивает не синхронно с пищалкой а один раз на цикл писка
- #define STROBE_PIN A4 // PC4
+// #define STROBE_PIN A4 // PC4
+ #define STROBE_PIN 4    // PD4
 
  #define BUZZER_PIN 11 // PB4
 
@@ -255,12 +257,13 @@ TCCR1A = (1<<WGM10);
   #define Green_LED 7  // PD7
   
   #define HARD_VOICE 2 // oc2b
+  #define HARD_VOICE_PIN 3 // PD3
 
   #define SDO_pin A0  // PC0  23
   #define SDI_pin A3  // PC3 
   #define SCLK_pin 13 // PB5
   
-  #define IRQ_pin 2   // INT0 - RFm22 GPIO2
+  #define IRQ_pin 2   // INT0 - RFm22 NIRQ
   #define nSel_pin A1 // PC1
   
   #define IRQ_interrupt 0 // Int0
@@ -277,6 +280,9 @@ TCCR1A = (1<<WGM10);
   #define  SDI_on   PORTC |=  _BV(3)    //C3
   #define  SDI_off  PORTC &= ~_BV(3)    //C3
   #define  SDO_read ((PINC & _BV(0)) != 0) //C0
+
+  #define  PD3_on   PORTD |=  _BV(3)    //D3
+  #define  PD3_off  PORTD &= ~_BV(3)    //D3
   
 #elif HARDWARE_TYPE == 3 // 644 board
 
@@ -284,6 +290,7 @@ TCCR1A = (1<<WGM10);
   #define Green_LED 10  // PB2
   
   #define HARD_VOICE 1 // oc2a
+  #define HARD_VOICE_PIN 3 // PD3
 
   #define SDO_pin A0  // PC0
   #define SDI_pin A3  // PC3
@@ -307,7 +314,7 @@ TCCR1A = (1<<WGM10);
   #define  SDI_on   PORTC |=  _BV(3)    //C3
   #define  SDI_off  PORTC &= ~_BV(3)    //C3
   #define  SDO_read ((PINA & _BV(0)) != 0) //A0
-  
+
 #endif
 
 

@@ -170,10 +170,9 @@ inline void initBuzzer(){
 #endif
 
 
-#if FLASH_PIN
+#if defined(FLASH_PIN)
      pinMode(FLASH_PIN, OUTPUT);
      digitalWrite(FLASH_PIN,0);
-//     pinMode(BUZZER_PIN2, INPUT_PULLUP);
 #else
      FlashPin=(byte)p.WakeFlashPin;
      pinMode(FlashPin, OUTPUT);
@@ -562,10 +561,12 @@ byte calibrate(){
      RFM_tx_min(); // RFM_SetPower(RF22B_PWRSTATE_TX, RFM_MIN_POWER );
 
      int16_t min=10000; // min
+    Red_LED_OFF;
       
      byte pos=0;
 
      byte good_count=0;
+DBG_PRINTLN("started");
 
      for(byte deviation=0; deviation<128 ; deviation++){
          spiWriteRegister(0x09, deviation);
@@ -584,28 +585,37 @@ byte calibrate(){
 //   	    диапазон 0-127
          
             good_count++;
-            
+            Red_LED_ON;
             int sum=0; // really signed
             for(int j=0;j<10;j++){
         	 spiWriteRegister(0x07, RF22B_PWRSTATE_RX); // xton | rxon
         	 delay_50();
-        	 sum += spiReadRegister(0x2b); //  AFC Correction Read
+        	 uint8_t v= spiReadRegister(0x2b); //  AFC Correction Read
+        	 sum += v;
             }
             if(sum<0) sum=-sum;
+        DBG_PRINTVARLN(deviation);
+        DBG_PRINTVARLN(sum);
+
             if(sum < min){
         	min=sum;
         	pos=deviation;
             }
+        } else {
+            Red_LED_OFF;
         }
     }
 
 //    p.FrequencyCorrection=pos; понравится - сохраним вручную
+    Red_LED_ON;
+
+DBG_PRINTF("done n=%d\n", good_count);
     
     RFM_off();
-    if(good_count>64)
+//    if(good_count>64)
         return pos;
-    else
-	return 0;
+//    else
+//	return 0;
 }
 
 
@@ -694,7 +704,7 @@ void  beepOnBuzzer(unsigned int length){
 
 // затем попищать
 #ifdef ACTIVE_BUZZER
- #if BUZZER_PIN
+ #ifdef BUZZER_PIN
   #if defined(BUZZER_PIN_PORT) && defined(BUZZER_PIN_BIT)
 	    BUZZER_HIGH;
 	    delay_100();
@@ -714,7 +724,7 @@ void  beepOnBuzzer(unsigned int length){
     } else delay_50();
  #endif
 #else
- #if BUZZER_PIN
+ #ifdef BUZZER_PIN
 	for(;length>0;length--){
   #if defined(BUZZER_PIN_PORT) && defined(BUZZER_PIN_BIT)
 	    BUZZER_HIGH;
@@ -740,7 +750,7 @@ void  beepOnBuzzer(unsigned int length){
 #endif
 
 // и не забыть выклюючить вспышку
-#if FLASH_PIN
+#ifdef FLASH_PIN
 	digitalWrite(FLASH_PIN, 0);
 #else
     if(FlashPin) 
@@ -1437,6 +1447,15 @@ void setup(void) {
     digitalWrite(STROBE_PIN,LOW);
 #endif
 
+#if defined(FLASH_PIN)
+    pinMode(FLASH_PIN, OUTPUT);   //nSEL
+    digitalWrite(FLASH_PIN,LOW);
+#endif
+
+#if defined(HARD_VOICE_PIN)
+    pinMode(HARD_VOICE_PIN, OUTPUT); // should be output to use as AF
+#endif
+
 #if defined(USE_GSM)
     gsm.initGSM();  // настроить ноги к GSM модулю
 #endif
@@ -1463,12 +1482,10 @@ void setup(void) {
 
     RFM_off(1);
 
-    initBuzzer();
+//    initBuzzer(); слишком рано - параметры еще не считаны
 
     deepSleep(50); // пусть откалибруется
 
-//    beepOnBuzzer_183();
-    beepOnBuzzer_333();
 
     uint16_t vcc=readVCC();
 
@@ -1477,6 +1494,7 @@ void setup(void) {
     if(vcc < VCC_LOW_THRESHOLD) {
 
 DBG_PRINTLN("low VCC");
+DBG_PRINTVARLN(vcc);
 
 	while((vcc=readVCC())<3300){
 //	      DBG_PRINTLN("low VCC");
@@ -1487,12 +1505,19 @@ DBG_PRINTLN("low VCC");
 
     consoleCommands(); // оно и EEPROM считает
 
+    initBuzzer(); // вот теперь параметры считаны и можно настраивать
+
+//    beepOnBuzzer_183();
+    beepOnBuzzer_333();
+
     byte sts=0;
 
 #if defined(USE_GSM) //init & check GSM
 // GSM жрет как не в себя и должен быть проверен и усыплен как можно быстрее
 
-    if(getExtVoltage() > 10 && strlen(p.phone1)) { // проверим наличие питания - GSM инициализируем только на внешнем. Еще и номер должен быть указан
+    uint16_t ext_v = getExtVoltage();
+DBG_PRINTVARLN(ext_v);
+    if(ext_v > 10 && strlen(p.phone1)) { // проверим наличие питания - GSM инициализируем только на внешнем. Еще и номер должен быть указан
 	if(gsm.begin()){ // удалось инициализировать и зарегиться в сети - а вдруг СИМ-карта дохлая?
 DBG_PRINTLN("GSM init OK");
 
@@ -1518,7 +1543,6 @@ DBG_PRINTLN("GSM OK");
     }
 #endif
 
-//delay(30000);
 
 #define INITIAL_UPTIME 1
 
@@ -1652,7 +1676,7 @@ void loop(void) {
 DBG_PRINTVARLN(vExt);
     
     // TODO - через MAVlink идет напряжение замеренное контроллером, использовать для (само)проверки?
-    if(vExt<=10) { // <1v питания нет
+    if(vExt<=37) { // <3.7v питания нет
 	lflags.hasPower = false;
 
 	if(lflags.lastPowerState) { // только что было

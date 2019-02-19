@@ -146,7 +146,7 @@ void _sendVOICE(char *s, byte beeps){
 
 // ШИМ частотой 16MHz / 256 = 62.5KHz (период 16мкс), значит одно значение ШИМ звучит 155/16 ~= 10 периодов
     TIMSK2 = (1<<OCIE2B) | (1<<TOIE2);  // Int T2 Overflow + Compare enabled
-#if defined(HARD_VOICE) && HARD_VOICE==2
+#if   defined(HARD_VOICE) && HARD_VOICE==2
     TCCR2A = (1<<WGM21) | (1<<WGM20) | (1<<COM2B1);   // Fast PWM non-inverted output
 #elif defined(HARD_VOICE) && HARD_VOICE==1
     TCCR2A = (1<<WGM21) | (1<<WGM20) | (1<<COM2A1);   // Fast PWM non-inverted output
