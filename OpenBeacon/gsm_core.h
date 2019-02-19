@@ -111,8 +111,9 @@ bool GSM::syncSpeed() {
     for(byte s=0; s<NUM_SPEEDS; s++){
         for(byte i=15;i!=0; i--)			// speed negotiation
             if(GSM::command(PSTR(""), 200) ) {
+                bool ret;
                 do {
-                    bool ret=GSM::command(PSTR("+IPR=" TO_STRING(GSM_SPEED)  ";&w" ));
+                    ret=GSM::command(PSTR("+IPR=" TO_STRING(GSM_SPEED)  ";&w" ));
                 } while(!ret);
                 AltSoftSerial::end();
                 AltSoftSerial::begin(GSM_SPEED);
